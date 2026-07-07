@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Visualizador 3D — Pichau Gaming</title>
+<script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+  }
+
+  .bloco-ver3d {
+    display: flex;
+    justify-content: center;
+    margin: 12px 0;
+  }
+
+  .botao-ver3d {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 19px;
+    padding: 9.7px 22.6px;
+    font-size: 14px;
+    font-family: 'Poppins', sans-serif;
+    color: #D43043;
+    background-color: #FFFFFF;
+    border: 1px solid #D43043;
+    border-radius: 3px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    text-transform: none !important;
+  }
+
+  .botao-ver3d svg {
+    width: 16px;
+    height: 16px;
+    fill: #D43043;
+    stroke: #AA091C;
+    stroke-width: 1.5;
+    transition: all 0.3s ease;
+  }
+
+  .botao-ver3d:hover {
+    background-color: #D43043;
+    color: #FFFFFF;
+  }
+
+  .botao-ver3d:hover svg {
+    fill: #FFFFFF;
+    stroke: #AA091C;
+  }
+
+  #modal3D {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+  }
+
+  #modal3D.is-open { display: flex; }
+
+  #modal3D .modal-content {
+    background: #191919;
+    padding: 20px;
+    max-width: 95%;
+    width: 1000px;
+    border-radius: 12px;
+    position: relative;
+    text-align: center;
+    color: #fff;
+    overflow: hidden;
+  }
+
+  #modal3D model-viewer {
+    width: 100%;
+    height: 800px;
+    background-color: #191919;
+    --poster-color: #000;
+    touch-action: none;
+  }
+
+  #frase-mobile {
+    display: none;
+    font-size: 14px;
+    color: #fff;
+    margin-top: 12px;
+    line-height: 1.4;
+  }
+
+  @media (max-width: 768px) {
+    #modal3D model-viewer { height: 500px; }
+    #frase-mobile { display: block; }
+  }
+
+  #fechar3D {
+    position: absolute;
+    top: 10px; right: 10px;
+    background: #c71c33;
+    color: white;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  #erro3D {
+    display: none;
+    color: #fff;
+    font-family: sans-serif;
+    text-align: center;
+    padding: 20px;
+  }
+</style>
+</head>
+<body>
+
+<!-- BOTÃO -->
+<div class="bloco-ver3d">
+  <button id="abrir3D" class="botao-ver3d">
+    <svg viewBox="0 0 24 24">
+      <path d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7zm0 12
+      c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8a3 3 0 100 6 3 3 0 000-6z"/>
+    </svg>
+    VER EM 3D
+  </button>
+</div>
+
+<div id="erro3D">Não foi possível carregar o modelo 3D. Verifique os parâmetros "repo" e "model" no link.</div>
+
+<!-- MODAL COM MODEL-VIEWER -->
+<div id="modal3D">
+  <div class="modal-content">
+    <model-viewer
+      id="model3d"
+      camera-controls
+      auto-rotate
+      rotation-per-second="15deg"
+      disable-tap
+      loading="eager"
+      reveal="auto"
+      style="background-color: #191919;">
+    </model-viewer>
+
+    <p id="frase-mobile">Use os dedos para girar o modelo em 3D.</p>
+    <button id="fechar3D">Fechar</button>
+  </div>
+</div>
+
+<!-- SCRIPT -->
+<script>
+  (function () {
+    const params = new URLSearchParams(window.location.search);
+    const repo   = params.get('repo');
+    const model  = params.get('model');
+    const poster = params.get('poster') || '';
+    const alt    = params.get('alt') || 'Modelo 3D do produto';
+    const branch = params.get('branch') || 'main'; // permite fixar uma tag/release se quiser
+
+    const abrirBtn      = document.getElementById('abrir3D');
+    const fecharBtn     = document.getElementById('fechar3D');
+    const modal         = document.getElementById('modal3D');
+    const modelViewer   = document.getElementById('model3d');
+    const erroDiv       = document.getElementById('erro3D');
+    const blocoBtn      = document.querySelector('.bloco-ver3d');
+
+    if (!repo || !model) {
+      blocoBtn.style.display = 'none';
+      erroDiv.style.display = 'block';
+      return;
+    }
+
+    // Monta a URL do GLB via jsDelivr, buscando no repositório da linha de produto
+    const glbUrl = `https://cdn.jsdelivr.net/gh/LucasMede1ros/${repo}@${branch}/${model}`;
+
+    modelViewer.setAttribute('src', glbUrl);
+    modelViewer.setAttribute('alt', alt);
+    if (poster) modelViewer.setAttribute('poster', poster);
+
+    // Preload do GLB
+    const preload = document.createElement('link');
+    preload.rel = 'preload';
+    preload.as = 'fetch';
+    preload.type = 'model/gltf-binary';
+    preload.crossOrigin = 'anonymous';
+    preload.href = glbUrl;
+    document.head.appendChild(preload);
+
+    function notificarPai(action) {
+      // Avisa a página pai (WordPress) para redimensionar o iframe em tela cheia
+      window.parent.postMessage({ type: 'viewer3d', action: action }, '*');
+    }
+
+    function abrirModal() {
+      modal.classList.add('is-open');
+      document.body.style.overflow = 'hidden';
+      notificarPai('open');
+
+      if (!modelViewer.loaded && modelViewer.dismissPoster) {
+        modelViewer.dismissPoster();
+      }
+      requestAnimationFrame(() => {
+        if (modelViewer.updateFraming) modelViewer.updateFraming();
+      });
+    }
+
+    function fecharModal() {
+      modal.classList.remove('is-open');
+      document.body.style.overflow = '';
+      notificarPai('close');
+    }
+
+    abrirBtn.addEventListener('click', abrirModal);
+    fecharBtn.addEventListener('click', fecharModal);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') fecharModal();
+    });
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) fecharModal();
+    });
+  })();
+</script>
+
+</body>
+</html>

@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Visualizador 3D</title>
 
 <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
@@ -10,71 +11,120 @@
 <style>
 html,
 body{
-  margin:0;
-  width:100%;
-  height:100%;
-  overflow:hidden;
-  background:#191919;
+    margin:0;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:#191919;
 }
 
 model-viewer{
-  width:100vw;
-  height:100vh;
-  background:#191919;
-  --poster-color:#191919;
+    width:100vw;
+    height:100vh;
+    background:#191919;
+    --poster-color:#191919;
+}
+
+#fechar{
+    position:fixed;
+    top:18px;
+    right:18px;
+    z-index:99999;
+    background:#d43043;
+    color:#fff;
+    border:0;
+    border-radius:6px;
+    padding:10px 18px;
+    font-size:14px;
+    font-family:Arial,sans-serif;
+    cursor:pointer;
+    font-weight:bold;
+    transition:.25s;
+}
+
+#fechar:hover{
+    background:#b41f32;
 }
 
 #erro{
-  display:none;
-  position:fixed;
-  inset:0;
-  align-items:center;
-  justify-content:center;
-  color:#fff;
-  background:#191919;
-  font-family:Arial,sans-serif;
-  text-align:center;
-  padding:30px;
+    display:none;
+    position:fixed;
+    inset:0;
+    justify-content:center;
+    align-items:center;
+    color:#fff;
+    font-family:Arial;
+    font-size:18px;
 }
 </style>
+
 </head>
 
 <body>
 
-<div id="erro">Modelo 3D não encontrado.</div>
+<button id="fechar">Fechar</button>
+
+<div id="erro">
+Modelo 3D não encontrado.
+</div>
 
 <model-viewer
-  id="viewer"
-  camera-controls
-  auto-rotate
-  rotation-per-second="15deg"
-  loading="eager"
-  reveal="auto"
-  shadow-intensity="1"
-  environment-image="neutral"
-  exposure="1"
-  interaction-prompt="none"
-  touch-action="pan-y">
+id="viewer"
+camera-controls
+auto-rotate
+rotation-per-second="15deg"
+shadow-intensity="1"
+environment-image="neutral"
+exposure="1"
+interaction-prompt="none"
+loading="eager"
+reveal="auto">
 </model-viewer>
 
 <script>
+
 const params = new URLSearchParams(window.location.search);
+
 const model = params.get("model");
 
 const viewer = document.getElementById("viewer");
 const erro = document.getElementById("erro");
 
-if (!model) {
-  viewer.style.display = "none";
-  erro.style.display = "flex";
-} else {
-  viewer.src = "./" + model;
+if(!model){
+
+    viewer.style.display="none";
+    erro.style.display="flex";
+
+}else{
+
+    viewer.src=model;
+
 }
 
-viewer.addEventListener("error", () => {
-  viewer.style.display = "none";
-  erro.style.display = "flex";
+viewer.addEventListener("error",()=>{
+
+    viewer.style.display="none";
+    erro.style.display="flex";
+
 });
+
+document.getElementById("fechar").addEventListener("click",()=>{
+
+    if(window.parent!==window){
+
+        window.parent.postMessage({
+            type:"viewer3d",
+            action:"close"
+        },"*");
+
+    }else{
+
+        history.back();
+
+    }
+
+});
+
 </script>
 
 </body>

@@ -31,6 +31,14 @@ model-viewer{
     --poster-color:#191919;
 }
 
+/* Poster responsivo */
+model-viewer::part(poster){
+    background-size:contain;
+    background-repeat:no-repeat;
+    background-position:center;
+    background-color:#191919;
+}
+
 #fechar{
     position:fixed;
     top:calc(20px + env(safe-area-inset-top, 0px));
@@ -51,8 +59,7 @@ model-viewer{
     background:#AA091C;
 }
 
-#erro,
-#loading{
+#erro{
     display:none;
     position:fixed;
     inset:0;
@@ -64,10 +71,6 @@ model-viewer{
     font-size:18px;
     text-align:center;
     padding:30px;
-}
-
-#loading{
-    display:flex;
 }
 
 @media(max-width:600px){
@@ -85,17 +88,13 @@ model-viewer{
 
 <button id="fechar">Fechar</button>
 
-<div id="loading">
-    Carregando modelo 3D...
-</div>
-
 <div id="erro">
     Modelo 3D não encontrado.
 </div>
 
 <model-viewer
     id="viewer"
-    poster="./Design-Lab-White.png"
+    poster="https://drivers.pichau.com.br/pichaugaming/Banner/Design-Lab-White.png"
     alt="Visualização 3D do produto"
     camera-controls
     auto-rotate
@@ -117,7 +116,6 @@ const alt = params.get("alt");
 
 const viewer = document.getElementById("viewer");
 const erro = document.getElementById("erro");
-const loading = document.getElementById("loading");
 const fechar = document.getElementById("fechar");
 
 const parentOrigin = "https://pichaugaming.com.br";
@@ -125,12 +123,7 @@ const fallbackUrl = "https://pichaugaming.com.br";
 
 function mostrarErro(){
     viewer.style.display = "none";
-    loading.style.display = "none";
     erro.style.display = "flex";
-}
-
-function esconderLoading(){
-    loading.style.display = "none";
 }
 
 function modeloValido(nome){
@@ -180,8 +173,6 @@ if(!modeloValido(model)){
 }
 
 viewer.addEventListener("load", () => {
-    esconderLoading();
-
     if(viewer.dismissPoster){
         viewer.dismissPoster();
     }

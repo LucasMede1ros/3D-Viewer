@@ -2,33 +2,39 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Visualizador 3D</title>
 
-<script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+<script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js" fetchpriority="high"></script>
 
 <style>
+*{
+    box-sizing:border-box;
+}
+
 html,
 body{
     margin:0;
+    padding:0;
     width:100%;
-    min-height:100dvh;
+    height:100%;
     overflow:hidden;
     background:#191919;
     font-family:Poppins,Arial,sans-serif;
 }
 
 model-viewer{
-    width:100vw;
-    height:100dvh;
+    display:block;
+    width:100%;
+    height:100%;
     background:#191919;
     --poster-color:#191919;
 }
 
 #fechar{
     position:fixed;
-    top:20px;
-    right:20px;
+    top:calc(20px + env(safe-area-inset-top, 0px));
+    right:calc(20px + env(safe-area-inset-right, 0px));
     z-index:999999;
     background:#D43043;
     color:#fff;
@@ -63,6 +69,15 @@ model-viewer{
 #loading{
     display:flex;
 }
+
+@media(max-width:600px){
+    #fechar{
+        top:calc(12px + env(safe-area-inset-top, 0px));
+        right:calc(12px + env(safe-area-inset-right, 0px));
+        padding:8px 14px;
+        font-size:13px;
+    }
+}
 </style>
 </head>
 
@@ -80,7 +95,7 @@ model-viewer{
 
 <model-viewer
     id="viewer"
-    poster="https://drivers.pichau.com.br/pichaugaming/Banner/Design-Lab-White.png"
+    poster="./Design-Lab-White.png"
     alt="Visualização 3D do produto"
     camera-controls
     auto-rotate
@@ -95,6 +110,7 @@ model-viewer{
 
 <script>
 const params = new URLSearchParams(window.location.search);
+
 const model = params.get("model");
 const poster = params.get("poster");
 const alt = params.get("alt");
@@ -104,7 +120,8 @@ const erro = document.getElementById("erro");
 const loading = document.getElementById("loading");
 const fechar = document.getElementById("fechar");
 
-const allowedOrigin = "https://pichaugaming.com.br";
+const parentOrigin = "https://pichaugaming.com.br";
+const fallbackUrl = "https://pichaugaming.com.br";
 
 function mostrarErro(){
     viewer.style.display = "none";
@@ -126,17 +143,32 @@ function modeloValido(nome){
     return true;
 }
 
-if(window.parent !== window){
-    window.parent.postMessage({
-        type: "viewer3d",
-        action: "open"
-    }, allowedOrigin);
+function avisarParent(action){
+    if(window.parent !== window){
+        window.parent.postMessage({
+            type: "viewer3d",
+            action: action
+        }, parentOrigin);
+    }
 }
+
+avisarParent("open");
 
 if(!modeloValido(model)){
     mostrarErro();
 }else{
-    viewer.src = "./" + model;
+    const glbUrl = "./" + model;
+
+    const preload = document.createElement("link");
+    preload.rel = "preload";
+    preload.as = "fetch";
+    preload.type = "model/gltf-binary";
+    preload.crossOrigin = "anonymous";
+    preload.href = glbUrl;
+    preload.setAttribute("fetchpriority", "high");
+    document.head.appendChild(preload);
+
+    viewer.src = glbUrl;
 
     if(poster){
         viewer.setAttribute("poster", poster);
@@ -161,12 +193,13 @@ viewer.addEventListener("error", () => {
 
 fechar.addEventListener("click", () => {
     if(window.parent !== window){
-        window.parent.postMessage({
-            type: "viewer3d",
-            action: "close"
-        }, allowedOrigin);
+        avisarParent("close");
     }else{
-        history.back();
+        if(history.length > 1){
+            history.back();
+        }else{
+            window.location.href = fallbackUrl;
+        }
     }
 });
 </script>

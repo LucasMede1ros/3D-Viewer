@@ -5,7 +5,7 @@
 
     <meta
         name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+        content="width=device-width, initial-scale=1, viewport-fit=cover">
 
     <title>Visualizador 3D</title>
 
@@ -22,7 +22,6 @@
         html,
         body {
             width: 100%;
-            min-width: 100%;
             height: 100%;
             min-height: 100%;
             margin: 0;
@@ -34,28 +33,27 @@
         }
 
         body {
-            position: fixed;
-            inset: 0;
             width: 100%;
             height: 100vh;
             height: 100svh;
             height: 100dvh;
             overscroll-behavior: none;
-            touch-action: none;
         }
 
         model-viewer {
             position: fixed;
             inset: 0;
+            z-index: 1;
             display: block;
             width: 100%;
             height: 100vh;
             height: 100svh;
             height: 100dvh;
             min-height: 100vh;
-            border: 0;
-            outline: none;
             background: #191919;
+            border: 0;
+            outline: 0;
+
             --poster-color: #191919;
             --progress-bar-color: #d43043;
             --progress-bar-height: 3px;
@@ -64,7 +62,7 @@
         #posterLayer {
             position: fixed;
             inset: 0;
-            z-index: 999997;
+            z-index: 10;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -75,15 +73,19 @@
             padding: 40px;
             background: #191919;
             pointer-events: none;
-            transition: opacity 0.3s ease;
+            opacity: 1;
+            visibility: visible;
+            transition:
+                opacity 0.3s ease,
+                visibility 0.3s ease;
         }
 
         #posterLayer.oculto {
-            visibility: hidden;
             opacity: 0;
+            visibility: hidden;
         }
 
-        #posterLayer img {
+        #posterImg {
             display: block;
             width: auto;
             height: auto;
@@ -91,17 +93,40 @@
             max-height: 70vh;
             max-height: 70svh;
             object-fit: contain;
-            -webkit-user-drag: none;
             user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        #erro {
+            position: fixed;
+            inset: 0;
+            z-index: 20;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100vh;
+            height: 100svh;
+            height: 100dvh;
+            padding: 30px;
+            background: #191919;
+            color: #ffffff;
+            font-size: 18px;
+            line-height: 1.5;
+            text-align: center;
+        }
+
+        #erro.visivel {
+            display: flex;
         }
 
         #fechar {
             position: fixed;
             top: calc(20px + env(safe-area-inset-top, 0px));
             right: calc(20px + env(safe-area-inset-right, 0px));
-            z-index: 999999;
+            z-index: 30;
             padding: 10px 18px;
-            border: none;
+            border: 0;
             border-radius: 6px;
             background: #d43043;
             color: #ffffff;
@@ -131,29 +156,6 @@
             outline-offset: 3px;
         }
 
-        #erro {
-            position: fixed;
-            inset: 0;
-            z-index: 999998;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            height: 100vh;
-            height: 100svh;
-            height: 100dvh;
-            padding: 30px;
-            background: #191919;
-            color: #ffffff;
-            font-size: 18px;
-            line-height: 1.5;
-            text-align: center;
-        }
-
-        #erro.visivel {
-            display: flex;
-        }
-
         @media (max-width: 600px) {
             #posterLayer {
                 padding:
@@ -163,7 +165,7 @@
                     calc(24px + env(safe-area-inset-left, 0px));
             }
 
-            #posterLayer img {
+            #posterImg {
                 max-width: 88vw;
                 max-height: 55vh;
                 max-height: 55svh;
@@ -190,7 +192,10 @@
 
 <body>
 
-    <button id="fechar" type="button" aria-label="Fechar visualizador 3D">
+    <button
+        id="fechar"
+        type="button"
+        aria-label="Fechar visualizador 3D">
         Fechar
     </button>
 
@@ -199,11 +204,13 @@
             id="posterImg"
             src="https://drivers.pichau.com.br/pichaugaming/Banner/Design-Lab-White.png"
             alt="Pichau Design Lab"
-            decoding="async"
             draggable="false">
     </div>
 
-    <div id="erro" role="alert" aria-live="assertive">
+    <div
+        id="erro"
+        role="alert"
+        aria-live="assertive">
         Não foi possível carregar o modelo 3D.
     </div>
 
@@ -220,8 +227,7 @@
         interaction-prompt="none"
         loading="eager"
         reveal="auto"
-        disable-pan
-        touch-action="pan-y">
+        disable-pan>
     </model-viewer>
 
     <script>
@@ -235,33 +241,37 @@
             const alt = params.get("alt");
 
             const viewer = document.getElementById("viewer");
-            const erro = document.getElementById("erro");
-            const fechar = document.getElementById("fechar");
             const posterLayer = document.getElementById("posterLayer");
             const posterImg = document.getElementById("posterImg");
+            const erro = document.getElementById("erro");
+            const fechar = document.getElementById("fechar");
 
             const parentOrigin = "https://pichaugaming.com.br";
             const fallbackUrl = "https://pichaugaming.com.br";
 
-            let modeloCarregado = false;
-            let tempoLimite = null;
+            let carregado = false;
+            let timeoutCarregamento = null;
 
             function modeloValido(nome) {
                 if (!nome) {
                     return false;
                 }
 
-                const nomeLimpo = nome.trim();
+                const arquivo = nome.trim();
 
-                if (!nomeLimpo.toLowerCase().endsWith(".glb")) {
+                if (!arquivo) {
+                    return false;
+                }
+
+                if (!arquivo.toLowerCase().endsWith(".glb")) {
                     return false;
                 }
 
                 if (
-                    nomeLimpo.includes("..") ||
-                    nomeLimpo.includes("/") ||
-                    nomeLimpo.includes("\\") ||
-                    nomeLimpo.includes("\0")
+                    arquivo.includes("..") ||
+                    arquivo.includes("/") ||
+                    arquivo.includes("\\") ||
+                    arquivo.includes("\0")
                 ) {
                     return false;
                 }
@@ -277,7 +287,7 @@
                 window.parent.postMessage(
                     {
                         type: "viewer3d",
-                        action
+                        action: action
                     },
                     parentOrigin
                 );
@@ -292,13 +302,13 @@
             }
 
             function mostrarErro(mensagem) {
-                if (tempoLimite) {
-                    window.clearTimeout(tempoLimite);
+                if (timeoutCarregamento) {
+                    window.clearTimeout(timeoutCarregamento);
+                    timeoutCarregamento = null;
                 }
 
-                viewer.removeAttribute("src");
-                viewer.style.display = "none";
                 posterLayer.style.display = "none";
+                viewer.style.display = "none";
 
                 erro.textContent =
                     mensagem || "Não foi possível carregar o modelo 3D.";
@@ -306,13 +316,16 @@
                 erro.classList.add("visivel");
             }
 
-            function definirPoster() {
+            function aplicarPoster() {
                 if (!poster) {
                     return;
                 }
 
                 try {
-                    const posterUrl = new URL(poster, window.location.href);
+                    const posterUrl = new URL(
+                        poster,
+                        window.location.href
+                    );
 
                     if (
                         posterUrl.protocol === "https:" ||
@@ -321,55 +334,92 @@
                         posterImg.src = posterUrl.href;
                     }
                 } catch (error) {
-                    console.warn("Poster inválido:", error);
+                    console.warn("URL do poster inválida:", error);
                 }
             }
 
-            function definirTextoAlternativo() {
-                if (!alt) {
+            function aplicarAlt() {
+                if (!alt || !alt.trim()) {
                     return;
                 }
 
-                const texto = alt.trim();
+                const textoAlt = alt.trim();
 
-                if (!texto) {
-                    return;
-                }
-
-                viewer.setAttribute("alt", texto);
-                posterImg.setAttribute("alt", texto);
+                viewer.setAttribute("alt", textoAlt);
+                posterImg.setAttribute("alt", textoAlt);
             }
 
-            function carregarModelo() {
+            async function arquivoExiste(url) {
+                try {
+                    const resposta = await fetch(url, {
+                        method: "HEAD",
+                        cache: "no-store"
+                    });
+
+                    return resposta.ok;
+                } catch (error) {
+                    console.warn(
+                        "Não foi possível verificar o arquivo antes do carregamento:",
+                        error
+                    );
+
+                    /*
+                     * Alguns servidores ou navegadores podem bloquear HEAD.
+                     * Nesse caso, deixamos o model-viewer tentar carregar.
+                     */
+                    return true;
+                }
+            }
+
+            async function carregarModelo() {
                 if (!modeloValido(model)) {
                     mostrarErro("Modelo 3D não encontrado.");
                     return;
                 }
 
                 const nomeArquivo = model.trim();
+
+                /*
+                 * Não usar encodeURIComponent aqui.
+                 * URLSearchParams já entrega o valor decodificado e o
+                 * construtor URL monta corretamente o caminho.
+                 */
                 const glbUrl = new URL(
-                    encodeURIComponent(nomeArquivo),
+                    "./" + nomeArquivo,
                     window.location.href
                 );
 
-                console.log("Carregando modelo:", glbUrl.href);
+                console.log("URL do modelo:", glbUrl.href);
+
+                const existe = await arquivoExiste(glbUrl.href);
+
+                if (!existe) {
+                    console.error(
+                        "O arquivo GLB não foi encontrado:",
+                        glbUrl.href
+                    );
+
+                    mostrarErro("Modelo 3D não encontrado.");
+                    return;
+                }
 
                 viewer.setAttribute("src", glbUrl.href);
 
-                tempoLimite = window.setTimeout(() => {
-                    if (!modeloCarregado) {
+                timeoutCarregamento = window.setTimeout(() => {
+                    if (!carregado) {
                         mostrarErro(
                             "O modelo 3D demorou muito para carregar."
                         );
                     }
-                }, 120000);
+                }, 180000);
             }
 
             viewer.addEventListener("load", () => {
-                modeloCarregado = true;
+                carregado = true;
 
-                if (tempoLimite) {
-                    window.clearTimeout(tempoLimite);
+                if (timeoutCarregamento) {
+                    window.clearTimeout(timeoutCarregamento);
+                    timeoutCarregamento = null;
                 }
 
                 esconderPoster();
@@ -377,27 +427,33 @@
                 console.log("Modelo 3D carregado com sucesso.");
             });
 
-            viewer.addEventListener("error", (event) => {
-                console.error("Erro ao carregar o modelo 3D:", event);
+            viewer.addEventListener("error", event => {
+                console.error(
+                    "Erro do model-viewer ao carregar o GLB:",
+                    event
+                );
 
                 mostrarErro(
                     "Não foi possível carregar o modelo 3D."
                 );
             });
 
-            viewer.addEventListener("progress", (event) => {
-                const progresso =
-                    event.detail && typeof event.detail.totalProgress === "number"
-                        ? event.detail.totalProgress
-                        : 0;
+            viewer.addEventListener("progress", event => {
+                const progresso = event.detail?.totalProgress;
 
-                if (progresso >= 1 && !modeloCarregado) {
-                    console.log("Download do modelo concluído.");
+                if (typeof progresso === "number") {
+                    console.log(
+                        "Progresso do modelo:",
+                        Math.round(progresso * 100) + "%"
+                    );
                 }
             });
 
             posterImg.addEventListener("error", () => {
-                console.warn("Não foi possível carregar a imagem inicial.");
+                console.warn(
+                    "Não foi possível carregar a imagem de abertura."
+                );
+
                 posterImg.style.display = "none";
             });
 
@@ -416,28 +472,30 @@
             });
 
             avisarParent("open");
-            definirPoster();
-            definirTextoAlternativo();
+            aplicarPoster();
+            aplicarAlt();
 
-            if ("customElements" in window) {
-                customElements
-                    .whenDefined("model-viewer")
-                    .then(carregarModelo)
-                    .catch((error) => {
-                        console.error(
-                            "Erro ao iniciar o model-viewer:",
-                            error
-                        );
-
-                        mostrarErro(
-                            "Este navegador não conseguiu iniciar o visualizador 3D."
-                        );
-                    });
-            } else {
+            if (!("customElements" in window)) {
                 mostrarErro(
                     "Este navegador não possui suporte ao visualizador 3D."
                 );
+
+                return;
             }
+
+            customElements
+                .whenDefined("model-viewer")
+                .then(carregarModelo)
+                .catch(error => {
+                    console.error(
+                        "Não foi possível iniciar o model-viewer:",
+                        error
+                    );
+
+                    mostrarErro(
+                        "Não foi possível iniciar o visualizador 3D."
+                    );
+                });
         })();
     </script>
 

@@ -64,6 +64,7 @@
             inset: 0;
             z-index: 10;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             width: 100%;
@@ -95,6 +96,30 @@
             object-fit: contain;
             user-select: none;
             -webkit-user-drag: none;
+            margin-bottom: 28px;
+        }
+
+        #progressWrap {
+            width: min(320px, 70vw);
+            height: 6px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        #progressBar {
+            height: 100%;
+            width: 0%;
+            background: #d43043;
+            border-radius: 999px;
+            transition: width 0.15s ease-out;
+        }
+
+        #progressTexto {
+            margin-top: 10px;
+            font-size: 13px;
+            color: #cccccc;
+            letter-spacing: 0.5px;
         }
 
         #erro {
@@ -205,6 +230,10 @@
             src="https://drivers.pichau.com.br/pichaugaming/Banner/Design-Lab-White.png"
             alt="Pichau Design Lab"
             draggable="false">
+        <div id="progressWrap">
+            <div id="progressBar"></div>
+        </div>
+        <div id="progressTexto">Carregando modelo 3D... 0%</div>
     </div>
 
     <div
@@ -243,6 +272,8 @@
             const viewer = document.getElementById("viewer");
             const posterLayer = document.getElementById("posterLayer");
             const posterImg = document.getElementById("posterImg");
+            const progressBar = document.getElementById("progressBar");
+            const progressTexto = document.getElementById("progressTexto");
             const erro = document.getElementById("erro");
             const fechar = document.getElementById("fechar");
 
@@ -349,6 +380,17 @@
                 posterImg.setAttribute("alt", textoAlt);
             }
 
+            function atualizarProgresso(fracao) {
+                const percentual = Math.max(
+                    0,
+                    Math.min(100, Math.round(fracao * 100))
+                );
+
+                progressBar.style.width = percentual + "%";
+                progressTexto.textContent =
+                    "Carregando modelo 3D... " + percentual + "%";
+            }
+
             async function arquivoExiste(url) {
                 try {
                     const resposta = await fetch(url, {
@@ -422,6 +464,7 @@
                     timeoutCarregamento = null;
                 }
 
+                atualizarProgresso(1);
                 esconderPoster();
 
                 console.log("Modelo 3D carregado com sucesso.");
@@ -442,10 +485,7 @@
                 const progresso = event.detail?.totalProgress;
 
                 if (typeof progresso === "number") {
-                    console.log(
-                        "Progresso do modelo:",
-                        Math.round(progresso * 100) + "%"
-                    );
+                    atualizarProgresso(progresso);
                 }
             });
 

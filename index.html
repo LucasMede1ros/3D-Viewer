@@ -455,8 +455,14 @@
                     event
                 );
 
+                const detalhe =
+                    event?.detail?.sourceError?.message ||
+                    event?.detail?.type ||
+                    "";
+
                 mostrarErro(
-                    "Não foi possível carregar o modelo 3D."
+                    "Não foi possível carregar o modelo 3D." +
+                        (detalhe ? " [" + detalhe + "]" : "")
                 );
             });
 

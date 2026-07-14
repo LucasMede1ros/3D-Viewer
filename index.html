@@ -404,28 +404,6 @@
                 progressWrap.setAttribute("aria-valuenow", String(percentual));
             }
 
-            async function arquivoExiste(url) {
-                try {
-                    const resposta = await fetch(url, {
-                        method: "HEAD",
-                        cache: "no-store"
-                    });
-
-                    return resposta.ok;
-                } catch (error) {
-                    console.warn(
-                        "Não foi possível verificar o arquivo antes do carregamento:",
-                        error
-                    );
-
-                    /*
-                     * Alguns servidores ou navegadores podem bloquear HEAD.
-                     * Nesse caso, deixamos o model-viewer tentar carregar.
-                     */
-                    return true;
-                }
-            }
-
             async function carregarModelo() {
                 if (!modeloValido(model)) {
                     mostrarErro("Modelo 3D não encontrado.");
@@ -445,18 +423,6 @@
                 );
 
                 console.log("URL do modelo:", glbUrl.href);
-
-                const existe = await arquivoExiste(glbUrl.href);
-
-                if (!existe) {
-                    console.error(
-                        "O arquivo GLB não foi encontrado:",
-                        glbUrl.href
-                    );
-
-                    mostrarErro("Modelo 3D não encontrado.");
-                    return;
-                }
 
                 viewer.setAttribute("src", glbUrl.href);
 

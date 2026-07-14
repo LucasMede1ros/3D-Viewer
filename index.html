@@ -9,6 +9,10 @@
 
     <title>Visualizador 3D</title>
 
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" href="data:,">
+    <link rel="preconnect" href="https://unpkg.com" crossorigin>
+
     <script
         type="module"
         src="https://unpkg.com/@google/model-viewer@4.1.0/dist/model-viewer.min.js">
@@ -230,7 +234,13 @@
             src="https://drivers.pichau.com.br/pichaugaming/Banner/Design-Lab-White.png"
             alt="Pichau Design Lab"
             draggable="false">
-        <div id="progressWrap">
+        <div
+            id="progressWrap"
+            role="progressbar"
+            aria-label="Carregando modelo 3D"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="0">
             <div id="progressBar"></div>
         </div>
         <div id="progressTexto">Carregando modelo 3D... 0%</div>
@@ -248,6 +258,7 @@
         alt="Visualização 3D do produto"
         camera-controls
         auto-rotate
+        auto-rotate-delay="0"
         rotation-per-second="15deg"
         shadow-intensity="1"
         shadow-softness="1"
@@ -272,6 +283,7 @@
             const viewer = document.getElementById("viewer");
             const posterLayer = document.getElementById("posterLayer");
             const posterImg = document.getElementById("posterImg");
+            const progressWrap = document.getElementById("progressWrap");
             const progressBar = document.getElementById("progressBar");
             const progressTexto = document.getElementById("progressTexto");
             const erro = document.getElementById("erro");
@@ -389,6 +401,7 @@
                 progressBar.style.width = percentual + "%";
                 progressTexto.textContent =
                     "Carregando modelo 3D... " + percentual + "%";
+                progressWrap.setAttribute("aria-valuenow", String(percentual));
             }
 
             async function arquivoExiste(url) {

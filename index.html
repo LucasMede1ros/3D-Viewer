@@ -10,8 +10,81 @@
     <title>Visualizador 3D</title>
 
     <meta name="robots" content="noindex, nofollow">
+
     <link rel="icon" href="data:,">
-    <link rel="preconnect" href="https://unpkg.com" crossorigin>
+
+    <link
+        rel="preconnect"
+        href="https://unpkg.com"
+        crossorigin>
+
+    <script>
+        (() => {
+            "use strict";
+
+            const params = new URLSearchParams(window.location.search);
+            const model = params.get("model");
+
+            function modeloValido(nome) {
+                if (!nome) {
+                    return false;
+                }
+
+                const arquivo = nome.trim();
+
+                if (!arquivo) {
+                    return false;
+                }
+
+                if (!arquivo.toLowerCase().endsWith(".glb")) {
+                    return false;
+                }
+
+                if (
+                    arquivo.includes("..") ||
+                    arquivo.includes("/") ||
+                    arquivo.includes("\\") ||
+                    arquivo.includes("\0")
+                ) {
+                    return false;
+                }
+
+                return true;
+            }
+
+            if (!modeloValido(model)) {
+                return;
+            }
+
+            try {
+                const glbUrl = new URL(
+                    "./" + model.trim(),
+                    window.location.href
+                );
+
+                const preload = document.createElement("link");
+
+                preload.rel = "preload";
+                preload.as = "fetch";
+                preload.type = "model/gltf-binary";
+                preload.href = glbUrl.href;
+                preload.crossOrigin = "anonymous";
+
+                document.head.appendChild(preload);
+
+                /*
+                 * Guarda a URL para o script principal reutilizar.
+                 * Assim, não é necessário montar novamente o endereço.
+                 */
+                window.__viewer3DGlbUrl = glbUrl.href;
+            } catch (error) {
+                console.warn(
+                    "Não foi possível iniciar o preload do modelo 3D:",
+                    error
+                );
+            }
+        })();
+    </script>
 
     <script
         type="module"
@@ -234,6 +307,7 @@
             src="https://drivers.pichau.com.br/pichaugaming/Banner/Design-Lab-White.png"
             alt="Pichau Design Lab"
             draggable="false">
+
         <div
             id="progressWrap"
             role="progressbar"
@@ -243,7 +317,10 @@
             aria-valuenow="0">
             <div id="progressBar"></div>
         </div>
-        <div id="progressTexto">Carregando modelo 3D... 0%</div>
+
+        <div id="progressTexto">
+            Carregando modelo 3D... 0%
+        </div>
     </div>
 
     <div
@@ -294,6 +371,7 @@
 
             let carregado = false;
             let timeoutCarregamento = null;
+            let glbUrl = null;
 
             function modeloValido(nome) {
                 if (!nome) {
@@ -320,6 +398,40 @@
                 }
 
                 return true;
+            }
+
+            function obterUrlModelo() {
+                if (!modeloValido(model)) {
+                    return null;
+                }
+
+                /*
+                 * Reutiliza a URL criada pelo preload executado no <head>.
+                 */
+                if (window.__viewer3DGlbUrl) {
+                    try {
+                        return new URL(window.__viewer3DGlbUrl);
+                    } catch (error) {
+                        console.warn(
+                            "URL armazenada pelo preload é inválida:",
+                            error
+                        );
+                    }
+                }
+
+                try {
+                    return new URL(
+                        "./" + model.trim(),
+                        window.location.href
+                    );
+                } catch (error) {
+                    console.error(
+                        "Não foi possível montar a URL do modelo:",
+                        error
+                    );
+
+                    return null;
+                }
             }
 
             function avisarParent(action) {
@@ -377,7 +489,10 @@
                         posterImg.src = posterUrl.href;
                     }
                 } catch (error) {
-                    console.warn("URL do poster inválida:", error);
+                    console.warn(
+                        "URL do poster inválida:",
+                        error
+                    );
                 }
             }
 
@@ -395,36 +510,44 @@
             function atualizarProgresso(fracao) {
                 const percentual = Math.max(
                     0,
-                    Math.min(100, Math.round(fracao * 100))
+                    Math.min(
+                        100,
+                        Math.round(fracao * 100)
+                    )
                 );
 
                 progressBar.style.width = percentual + "%";
+
                 progressTexto.textContent =
-                    "Carregando modelo 3D... " + percentual + "%";
-                progressWrap.setAttribute("aria-valuenow", String(percentual));
+                    "Carregando modelo 3D... " +
+                    percentual +
+                    "%";
+
+                progressWrap.setAttribute(
+                    "aria-valuenow",
+                    String(percentual)
+                );
             }
 
-            async function carregarModelo() {
-                if (!modeloValido(model)) {
+            function carregarModelo() {
+                if (!glbUrl) {
                     mostrarErro("Modelo 3D não encontrado.");
                     return;
                 }
 
-                const nomeArquivo = model.trim();
-
-                /*
-                 * Não usar encodeURIComponent aqui.
-                 * URLSearchParams já entrega o valor decodificado e o
-                 * construtor URL monta corretamente o caminho.
-                 */
-                const glbUrl = new URL(
-                    "./" + nomeArquivo,
-                    window.location.href
+                console.log(
+                    "URL do modelo:",
+                    glbUrl.href
                 );
 
-                console.log("URL do modelo:", glbUrl.href);
-
-                viewer.setAttribute("src", glbUrl.href);
+                /*
+                 * O arquivo já começou a ser baixado pelo preload.
+                 * Agora o model-viewer reutiliza a mesma URL.
+                 */
+                viewer.setAttribute(
+                    "src",
+                    glbUrl.href
+                );
 
                 timeoutCarregamento = window.setTimeout(() => {
                     if (!carregado) {
@@ -446,7 +569,9 @@
                 atualizarProgresso(1);
                 esconderPoster();
 
-                console.log("Modelo 3D carregado com sucesso.");
+                console.log(
+                    "Modelo 3D carregado com sucesso."
+                );
             });
 
             viewer.addEventListener("error", event => {
@@ -462,12 +587,13 @@
 
                 mostrarErro(
                     "Não foi possível carregar o modelo 3D." +
-                        (detalhe ? " [" + detalhe + "]" : "")
+                    (detalhe ? " [" + detalhe + "]" : "")
                 );
             });
 
             viewer.addEventListener("progress", event => {
-                const progresso = event.detail?.totalProgress;
+                const progresso =
+                    event.detail?.totalProgress;
 
                 if (typeof progresso === "number") {
                     atualizarProgresso(progresso);
@@ -499,6 +625,13 @@
             avisarParent("open");
             aplicarPoster();
             aplicarAlt();
+
+            glbUrl = obterUrlModelo();
+
+            if (!glbUrl) {
+                mostrarErro("Modelo 3D não encontrado.");
+                return;
+            }
 
             if (!("customElements" in window)) {
                 mostrarErro(

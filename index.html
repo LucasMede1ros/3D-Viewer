@@ -18,6 +18,10 @@
         href="https://unpkg.com"
         crossorigin>
 
+    <!--
+        O script responsável pelo preload do GLB fica antes do model-viewer.
+        Assim, o download do modelo pode começar imediatamente.
+    -->
     <script>
         (() => {
             "use strict";
@@ -68,7 +72,12 @@
                 preload.as = "fetch";
                 preload.type = "model/gltf-binary";
                 preload.href = glbUrl.href;
-                preload.crossOrigin = "anonymous";
+                preload.setAttribute("fetchpriority", "high");
+                /*
+                 * Sem crossOrigin: o arquivo é same-origin (mesmo domínio
+                 * do index.html). Definir crossOrigin aqui causou, no
+                 * passado, falha de carregamento especificamente no Safari.
+                 */
 
                 document.head.appendChild(preload);
 
@@ -371,6 +380,7 @@
 
             let carregado = false;
             let timeoutCarregamento = null;
+            let contextRecuperado = false;
             let glbUrl = null;
 
             function modeloValido(nome) {
@@ -580,9 +590,36 @@
                     event
                 );
 
+                const tipoErro = event?.detail?.type;
+
+                if (tipoErro === "webglcontextlost" && !contextRecuperado) {
+                    const chaveSessao = "viewer3d-reload-" + (model || "");
+                    const jaTentou = sessionStorage.getItem(chaveSessao);
+
+                    if (jaTentou) {
+                        mostrarErro(
+                            "Este dispositivo não tem memória suficiente para exibir este modelo 3D."
+                        );
+                        return;
+                    }
+
+                    contextRecuperado = true;
+                    sessionStorage.setItem(chaveSessao, "1");
+
+                    console.warn(
+                        "Contexto WebGL perdido. Tentando recarregar automaticamente..."
+                    );
+
+                    window.setTimeout(() => {
+                        window.location.reload();
+                    }, 500);
+
+                    return;
+                }
+
                 const detalhe =
                     event?.detail?.sourceError?.message ||
-                    event?.detail?.type ||
+                    tipoErro ||
                     "";
 
                 mostrarErro(

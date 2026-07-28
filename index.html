@@ -11,15 +11,41 @@
     <meta name="robots" content="noindex, nofollow">
     <link rel="icon" href="data:,">
 
-    <!-- Antecipação somente das conexões realmente utilizadas. -->
-    <link rel="preconnect" href="https://unpkg.com" crossorigin>
+    <!-- Conexões críticas iniciadas o mais cedo possível. -->
+    <link rel="preconnect" href="https://ajax.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://drivers.pichau.com.br" crossorigin>
 
     <!--
+        Todos os modelos deste projeto usam KTX2. O transcoder é antecipado para
+        não começar a baixar somente depois que o GLB já foi analisado.
+    -->
+    <link
+        rel="preload"
+        href="https://www.gstatic.com/basis-universal/versioned/2021-04-15-ba1c3e4/basis_transcoder.js"
+        as="fetch"
+        type="application/javascript"
+        crossorigin="anonymous"
+        fetchpriority="high">
+    <link
+        rel="preload"
+        href="https://www.gstatic.com/basis-universal/versioned/2021-04-15-ba1c3e4/basis_transcoder.wasm"
+        as="fetch"
+        type="application/wasm"
+        crossorigin="anonymous"
+        fetchpriority="high">
+
+    <script>
+        self.ModelViewerElement = self.ModelViewerElement || {};
+        self.ModelViewerElement.ktx2TranscoderLocation =
+            "https://www.gstatic.com/basis-universal/versioned/2021-04-15-ba1c3e4/";
+        self.ModelViewerElement.powerPreference = "high-performance";
+    </script>
+
+    <!--
         Inicia o download do GLB antes de a biblioteca model-viewer terminar.
-        Como os modelos ficam no mesmo diretório/domínio do index, o preload
-        é criado sem crossorigin para preservar a compatibilidade observada
-        no Safari.
+        O preload usa o mesmo modo sem credenciais adotado pelo model-viewer,
+        permitindo que a resposta seja reaproveitada quando o componente iniciar.
     -->
     <script>
         (() => {
@@ -54,6 +80,8 @@
                 preload.as = "fetch";
                 preload.type = "model/gltf-binary";
                 preload.href = glbUrl.href;
+                preload.crossOrigin = "anonymous";
+                preload.fetchPriority = "high";
 
                 document.head.appendChild(preload);
             } catch (error) {
@@ -62,10 +90,12 @@
         })();
     </script>
 
-    <!-- Versão fixa para evitar mudanças inesperadas na biblioteca. -->
+    <!-- Versão fixa e hospedagem recomendada oficialmente pelo projeto. -->
     <script
         type="module"
-        src="https://unpkg.com/@google/model-viewer@4.1.0/dist/model-viewer.min.js">
+        src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.3.1/model-viewer.min.js"
+        crossorigin="anonymous"
+        fetchpriority="high">
     </script>
 
     <style>
@@ -129,12 +159,6 @@
             pointer-events: none;
             opacity: 1;
             visibility: visible;
-            transition: opacity 0.25s ease, visibility 0.25s ease;
-        }
-
-        #posterLayer.oculto {
-            opacity: 0;
-            visibility: hidden;
         }
 
         #posterImg {
@@ -264,7 +288,6 @@
         }
 
         @media (prefers-reduced-motion: reduce) {
-            #posterLayer,
             #progressBar,
             #fechar {
                 transition: none;
@@ -287,6 +310,7 @@
             src="https://drivers.pichau.com.br/pichaugaming/Banner/Design-Lab-White.png"
             alt="Pichau Design Lab"
             decoding="async"
+            fetchpriority="low"
             draggable="false">
 
         <div
@@ -310,12 +334,8 @@
         id="viewer"
         alt="Visualização 3D do produto"
         camera-controls
-        auto-rotate
         auto-rotate-delay="0"
         rotation-per-second="15deg"
-        shadow-intensity="1"
-        shadow-softness="1"
-        environment-image="neutral"
         exposure="1"
         interaction-prompt="none"
         loading="eager"
@@ -351,6 +371,7 @@
             let contextRecuperado = false;
             let timeoutCarregamento = null;
             let timeoutBiblioteca = null;
+            let ultimoPercentual = -1;
 
             const chaveRecuperacaoWebGL =
                 "viewer3d-reload-" + (model || "sem-modelo");
@@ -415,11 +436,22 @@
             }
 
             function esconderPoster() {
-                posterLayer.classList.add("oculto");
+                // Sem transição: o primeiro frame fica visível imediatamente.
+                posterLayer.hidden = true;
+            }
 
-                window.setTimeout(() => {
-                    posterLayer.hidden = true;
-                }, 280);
+            function ativarEfeitosDepoisDoPrimeiroFrame() {
+                const ativar = () => {
+                    viewer.shadowIntensity = 1;
+                    viewer.shadowSoftness = 1;
+                    viewer.setAttribute("auto-rotate", "");
+                };
+
+                if ("requestIdleCallback" in window) {
+                    window.requestIdleCallback(ativar, { timeout: 500 });
+                } else {
+                    window.setTimeout(ativar, 0);
+                }
             }
 
             function mostrarErro(mensagem) {
@@ -477,6 +509,11 @@
                     percentual = Math.min(99, percentual);
                 }
 
+                if (percentual === ultimoPercentual) {
+                    return;
+                }
+
+                ultimoPercentual = percentual;
                 progressBar.style.width = percentual + "%";
                 progressTexto.textContent =
                     "Carregando modelo 3D... " + percentual + "%";
@@ -566,6 +603,7 @@
 
                     atualizarProgresso(1, true);
                     esconderPoster();
+                    ativarEfeitosDepoisDoPrimeiroFrame();
                 },
                 { once: true }
             );

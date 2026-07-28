@@ -13,10 +13,10 @@
 
     <link rel="icon" href="data:,">
 
-    <!-- Conexões antecipadas -->
+    <!-- Antecipação das conexões externas -->
     <link
         rel="preconnect"
-        href="https://ajax.googleapis.com"
+        href="https://unpkg.com"
         crossorigin>
 
     <link
@@ -24,87 +24,10 @@
         href="https://drivers.pichau.com.br"
         crossorigin>
 
-    <script>
-        (() => {
-            "use strict";
-
-            const params = new URLSearchParams(window.location.search);
-            const model = params.get("model");
-
-            /*
-             * Configuração compartilhada entre o preload no <head>
-             * e o script principal no final da página.
-             */
-            window.Viewer3DConfig = {
-                glbUrl: null,
-
-                modeloValido(nome) {
-                    if (typeof nome !== "string") {
-                        return false;
-                    }
-
-                    const arquivo = nome.trim();
-
-                    if (!arquivo) {
-                        return false;
-                    }
-
-                    if (!arquivo.toLowerCase().endsWith(".glb")) {
-                        return false;
-                    }
-
-                    if (
-                        arquivo.includes("..") ||
-                        arquivo.includes("/") ||
-                        arquivo.includes("\\") ||
-                        arquivo.includes("\0")
-                    ) {
-                        return false;
-                    }
-
-                    return true;
-                }
-            };
-
-            if (!window.Viewer3DConfig.modeloValido(model)) {
-                return;
-            }
-
-            try {
-                const glbUrl = new URL(
-                    "./" + model.trim(),
-                    window.location.href
-                );
-
-                window.Viewer3DConfig.glbUrl = glbUrl.href;
-
-                /*
-                 * Inicia o download do GLB imediatamente.
-                 * A biblioteca e o modelo são baixados em paralelo.
-                 */
-                const preload = document.createElement("link");
-
-                preload.rel = "preload";
-                preload.as = "fetch";
-                preload.type = "model/gltf-binary";
-                preload.href = glbUrl.href;
-                preload.crossOrigin = "anonymous";
-                preload.setAttribute("fetchpriority", "high");
-
-                document.head.appendChild(preload);
-            } catch (error) {
-                console.warn(
-                    "Não foi possível iniciar o preload do modelo 3D:",
-                    error
-                );
-            }
-        })();
-    </script>
-
-    <!-- Biblioteca oficial do model-viewer -->
+    <!-- Versão fixa para evitar mudanças inesperadas -->
     <script
         type="module"
-        src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.3.1/model-viewer.min.js">
+        src="https://unpkg.com/@google/model-viewer@4.1.0/dist/model-viewer.min.js">
     </script>
 
     <style>
@@ -148,8 +71,8 @@
             outline: 0;
 
             --poster-color: #191919;
-            --progress-bar-color: #d43043;
-            --progress-bar-height: 3px;
+            --progress-bar-color: transparent;
+            --progress-bar-height: 0;
         }
 
         #posterLayer {
@@ -170,8 +93,8 @@
             opacity: 1;
             visibility: visible;
             transition:
-                opacity 0.3s ease,
-                visibility 0.3s ease;
+                opacity 0.25s ease,
+                visibility 0.25s ease;
         }
 
         #posterLayer.oculto {
@@ -205,7 +128,8 @@
             height: 100%;
             background: #d43043;
             border-radius: 999px;
-            transition: width 0.15s ease-out;
+            transition: width 0.12s linear;
+            will-change: width;
         }
 
         #progressTexto {
@@ -257,8 +181,8 @@
             -webkit-appearance: none;
             touch-action: manipulation;
             transition:
-                background-color 0.25s ease,
-                transform 0.15s ease;
+                background-color 0.2s ease,
+                transform 0.12s ease;
         }
 
         #fechar:hover {
@@ -305,6 +229,14 @@
                 font-size: 16px;
             }
         }
+
+        @media (prefers-reduced-motion: reduce) {
+            #posterLayer,
+            #progressBar,
+            #fechar {
+                transition: none;
+            }
+        }
     </style>
 </head>
 
@@ -322,7 +254,6 @@
             id="posterImg"
             src="https://drivers.pichau.com.br/pichaugaming/Banner/Design-Lab-White.png"
             alt="Pichau Design Lab"
-            fetchpriority="high"
             decoding="async"
             draggable="false">
 
@@ -388,32 +319,48 @@
             const parentOrigin = "https://pichaugaming.com.br";
             const fallbackUrl = "https://pichaugaming.com.br";
 
-            const config = window.Viewer3DConfig;
+            const tempoMaximoCarregamento = 180000;
+            const tempoMaximoBiblioteca = 20000;
 
             let carregado = false;
             let erroExibido = false;
+            let contextRecuperado = false;
             let timeoutCarregamento = null;
             let timeoutBiblioteca = null;
-            let contextRecuperado = false;
-            let glbUrl = null;
 
             const chaveRecuperacaoWebGL =
                 "viewer3d-reload-" + (model || "");
 
-            function obterUrlModelo() {
-                if (!config || !config.modeloValido(model)) {
-                    return null;
+            function modeloValido(nome) {
+                if (typeof nome !== "string") {
+                    return false;
                 }
 
-                if (config.glbUrl) {
-                    try {
-                        return new URL(config.glbUrl);
-                    } catch (error) {
-                        console.warn(
-                            "URL armazenada pelo preload é inválida:",
-                            error
-                        );
-                    }
+                const arquivo = nome.trim();
+
+                if (!arquivo) {
+                    return false;
+                }
+
+                if (!arquivo.toLowerCase().endsWith(".glb")) {
+                    return false;
+                }
+
+                if (
+                    arquivo.includes("..") ||
+                    arquivo.includes("/") ||
+                    arquivo.includes("\\") ||
+                    arquivo.includes("\0")
+                ) {
+                    return false;
+                }
+
+                return true;
+            }
+
+            function obterUrlModelo() {
+                if (!modeloValido(model)) {
+                    return null;
                 }
 
                 try {
@@ -446,12 +393,12 @@
             }
 
             function limparTimeouts() {
-                if (timeoutCarregamento) {
+                if (timeoutCarregamento !== null) {
                     window.clearTimeout(timeoutCarregamento);
                     timeoutCarregamento = null;
                 }
 
-                if (timeoutBiblioteca) {
+                if (timeoutBiblioteca !== null) {
                     window.clearTimeout(timeoutBiblioteca);
                     timeoutBiblioteca = null;
                 }
@@ -461,8 +408,8 @@
                 posterLayer.classList.add("oculto");
 
                 window.setTimeout(() => {
-                    posterLayer.style.display = "none";
-                }, 350);
+                    posterLayer.hidden = true;
+                }, 280);
             }
 
             function mostrarErro(mensagem) {
@@ -474,8 +421,8 @@
 
                 limparTimeouts();
 
-                posterLayer.style.display = "none";
-                viewer.style.display = "none";
+                posterLayer.hidden = true;
+                viewer.hidden = true;
 
                 erro.textContent =
                     mensagem ||
@@ -524,7 +471,10 @@
                 fracao,
                 finalizado = false
             ) {
-                if (typeof fracao !== "number") {
+                if (
+                    typeof fracao !== "number" ||
+                    !Number.isFinite(fracao)
+                ) {
                     return;
                 }
 
@@ -535,10 +485,6 @@
                     Math.min(100, percentual)
                 );
 
-                /*
-                 * Mantém em no máximo 99% enquanto o primeiro
-                 * frame ainda não estiver pronto.
-                 */
                 if (!finalizado) {
                     percentual = Math.min(99, percentual);
                 }
@@ -563,33 +509,23 @@
                             "O modelo 3D demorou muito para carregar."
                         );
                     }
-                }, 180000);
+                }, tempoMaximoCarregamento);
             }
 
-            function definirModeloImediatamente() {
-                glbUrl = obterUrlModelo();
+            function definirModelo() {
+                const glbUrl = obterUrlModelo();
 
                 if (!glbUrl) {
                     mostrarErro("Modelo 3D não encontrado.");
                     return false;
                 }
 
-                console.log(
-                    "URL do modelo:",
-                    glbUrl.href
-                );
-
                 /*
-                 * O atributo src é definido imediatamente.
-                 * Não espera customElements.whenDefined().
-                 *
-                 * Quando a biblioteca terminar de carregar,
-                 * o componente já encontrará o src configurado.
+                 * Define o src imediatamente, sem esperar a biblioteca.
+                 * Quando o componente for registrado, o endereço já estará
+                 * disponível para iniciar o carregamento.
                  */
-                viewer.setAttribute(
-                    "src",
-                    glbUrl.href
-                );
+                viewer.setAttribute("src", glbUrl.href);
 
                 iniciarTimeoutCarregamento();
 
@@ -605,30 +541,21 @@
                     return;
                 }
 
-                /*
-                 * whenDefined() normalmente fica pendente quando o
-                 * arquivo da biblioteca não carrega. Por isso existe
-                 * também um timeout específico.
-                 */
                 timeoutBiblioteca = window.setTimeout(() => {
                     if (!customElements.get("model-viewer")) {
                         mostrarErro(
                             "Não foi possível iniciar o visualizador 3D."
                         );
                     }
-                }, 20000);
+                }, tempoMaximoBiblioteca);
 
                 customElements
                     .whenDefined("model-viewer")
                     .then(() => {
-                        if (timeoutBiblioteca) {
+                        if (timeoutBiblioteca !== null) {
                             window.clearTimeout(timeoutBiblioteca);
                             timeoutBiblioteca = null;
                         }
-
-                        console.log(
-                            "Biblioteca model-viewer iniciada."
-                        );
                     })
                     .catch(error => {
                         console.error(
@@ -642,33 +569,29 @@
                     });
             }
 
-            viewer.addEventListener("load", () => {
-                carregado = true;
+            viewer.addEventListener(
+                "load",
+                () => {
+                    carregado = true;
 
-                limparTimeouts();
+                    limparTimeouts();
 
-                /*
-                 * Após um carregamento bem-sucedido, libera uma nova
-                 * tentativa de recuperação em uma falha futura.
-                 */
-                try {
-                    sessionStorage.removeItem(
-                        chaveRecuperacaoWebGL
-                    );
-                } catch (error) {
-                    console.warn(
-                        "Não foi possível limpar a recuperação WebGL:",
-                        error
-                    );
-                }
+                    try {
+                        sessionStorage.removeItem(
+                            chaveRecuperacaoWebGL
+                        );
+                    } catch (error) {
+                        console.warn(
+                            "Não foi possível limpar a recuperação WebGL:",
+                            error
+                        );
+                    }
 
-                atualizarProgresso(1, true);
-                esconderPoster();
-
-                console.log(
-                    "Modelo 3D carregado com sucesso."
-                );
-            });
+                    atualizarProgresso(1, true);
+                    esconderPoster();
+                },
+                { once: true }
+            );
 
             viewer.addEventListener("error", event => {
                 console.error(
@@ -718,10 +641,6 @@
                         );
                     }
 
-                    console.warn(
-                        "Contexto WebGL perdido. Recarregando automaticamente..."
-                    );
-
                     window.setTimeout(() => {
                         window.location.reload();
                     }, 500);
@@ -741,19 +660,18 @@
             });
 
             viewer.addEventListener("progress", event => {
-                const progresso =
-                    event.detail?.totalProgress;
-
-                atualizarProgresso(progresso);
-            });
-
-            posterImg.addEventListener("error", () => {
-                console.warn(
-                    "Não foi possível carregar a imagem de abertura."
+                atualizarProgresso(
+                    event.detail?.totalProgress
                 );
-
-                posterImg.style.display = "none";
             });
+
+            posterImg.addEventListener(
+                "error",
+                () => {
+                    posterImg.hidden = true;
+                },
+                { once: true }
+            );
 
             fechar.addEventListener("click", () => {
                 if (window.parent !== window) {
@@ -769,16 +687,29 @@
                 window.location.href = fallbackUrl;
             });
 
-            avisarParent("open");
+            document.addEventListener("keydown", event => {
+                if (event.key !== "Escape") {
+                    return;
+                }
+
+                if (window.parent !== window) {
+                    avisarParent("close");
+                    return;
+                }
+
+                if (window.history.length > 1) {
+                    window.history.back();
+                    return;
+                }
+
+                window.location.href = fallbackUrl;
+            });
 
             aplicarPoster();
             aplicarAlt();
+            avisarParent("open");
 
-            /*
-             * Primeiro configura o modelo imediatamente.
-             * Depois acompanha a inicialização da biblioteca.
-             */
-            if (definirModeloImediatamente()) {
+            if (definirModelo()) {
                 acompanharBiblioteca();
             }
         })();

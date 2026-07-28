@@ -15,6 +15,54 @@
     <link rel="preconnect" href="https://unpkg.com" crossorigin>
     <link rel="preconnect" href="https://drivers.pichau.com.br" crossorigin>
 
+    <!--
+        Inicia o download do GLB antes de a biblioteca model-viewer terminar.
+        Como os modelos ficam no mesmo diretório/domínio do index, o preload
+        é criado sem crossorigin para preservar a compatibilidade observada
+        no Safari.
+    -->
+    <script>
+        (() => {
+            "use strict";
+
+            const model = new URLSearchParams(window.location.search).get("model");
+
+            if (typeof model !== "string") {
+                return;
+            }
+
+            const arquivo = model.trim();
+
+            if (
+                !arquivo ||
+                !arquivo.toLowerCase().endsWith(".glb") ||
+                arquivo.includes("..") ||
+                arquivo.includes("/") ||
+                arquivo.includes("\\") ||
+                arquivo.includes("\0")
+            ) {
+                return;
+            }
+
+            try {
+                const glbUrl = new URL("./" + arquivo, window.location.href);
+
+                window.__viewer3DGlbUrl = glbUrl.href;
+
+                const preload = document.createElement("link");
+                preload.rel = "preload";
+                preload.as = "fetch";
+                preload.type = "model/gltf-binary";
+                preload.href = glbUrl.href;
+                preload.setAttribute("fetchpriority", "high");
+
+                document.head.appendChild(preload);
+            } catch (error) {
+                console.warn("Não foi possível iniciar o preload do modelo 3D:", error);
+            }
+        })();
+    </script>
+
     <!-- Versão fixa para evitar mudanças inesperadas na biblioteca. -->
     <script
         type="module"
@@ -331,7 +379,10 @@
                 }
 
                 try {
-                    return new URL("./" + model.trim(), window.location.href);
+                    return new URL(
+                        window.__viewer3DGlbUrl || ("./" + model.trim()),
+                        window.location.href
+                    );
                 } catch (error) {
                     console.error("Não foi possível montar a URL do modelo:", error);
                     return null;
@@ -450,8 +501,9 @@
                 }
 
                 /*
-                 * Define o src imediatamente. O componente será atualizado
-                 * assim que a biblioteca model-viewer terminar de carregar.
+                 * O preload do <head> já pode estar baixando este mesmo arquivo.
+                 * O src é definido imediatamente para que o model-viewer reutilize
+                 * a resposta assim que o custom element for registrado.
                  */
                 viewer.setAttribute("src", glbUrl.href);
                 iniciarTimeoutCarregamento();

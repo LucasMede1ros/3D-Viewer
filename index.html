@@ -11,60 +11,58 @@
     <meta name="robots" content="noindex, nofollow">
     <link rel="icon" href="data:,">
 
-    <!-- Conexões críticas iniciadas o mais cedo possível. -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://drivers.pichau.com.br" crossorigin>
 
     <!--
-        Inicia o download do GLB antes de a biblioteca model-viewer terminar.
-        Como o GLB está na mesma origem, o preload não força modo CORS.
+        Inicia antecipadamente o download do GLB.
+        O arquivo é same-origin, portanto não utiliza crossorigin.
     -->
     <script>
         (() => {
             "use strict";
 
-            const model = new URLSearchParams(window.location.search).get("model");
+            const nome = new URLSearchParams(window.location.search).get("model");
 
-            if (typeof model !== "string") {
+            if (typeof nome !== "string") {
                 return;
             }
 
-            const arquivo = model.trim();
+            const arquivo = nome.trim();
+            const valido =
+                arquivo.length > 0 &&
+                arquivo.toLowerCase().endsWith(".glb") &&
+                !arquivo.includes("..") &&
+                !arquivo.includes("/") &&
+                !arquivo.includes("\\") &&
+                !arquivo.includes("\0");
 
-            if (
-                !arquivo ||
-                !arquivo.toLowerCase().endsWith(".glb") ||
-                arquivo.includes("..") ||
-                arquivo.includes("/") ||
-                arquivo.includes("\\") ||
-                arquivo.includes("\0")
-            ) {
+            if (!valido) {
                 return;
             }
 
             try {
-                const glbUrl = new URL("./" + arquivo, window.location.href);
+                const url = new URL("./" + arquivo, window.location.href);
 
-                window.__viewer3DGlbUrl = glbUrl.href;
+                window.__viewer3DGlbUrl = url.href;
 
                 const preload = document.createElement("link");
                 preload.rel = "preload";
                 preload.as = "fetch";
                 preload.type = "model/gltf-binary";
-                preload.href = glbUrl.href;
-                preload.fetchPriority = "high";
+                preload.href = url.href;
 
                 document.head.appendChild(preload);
             } catch (error) {
-                console.warn("Não foi possível iniciar o preload do modelo 3D:", error);
+                console.warn("Não foi possível antecipar o modelo 3D:", error);
             }
         })();
     </script>
 
-    <!-- Biblioteca em prioridade normal; o GLB continua sendo o recurso principal. -->
+    <!-- Versão fixa para evitar mudanças inesperadas. -->
     <script
         type="module"
-        src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"
+        src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer.min.js"
         crossorigin="anonymous">
     </script>
 
@@ -102,11 +100,10 @@
             height: 100vh;
             height: 100svh;
             height: 100dvh;
-            background: #191919;
             border: 0;
             outline: 0;
+            background: #191919;
 
-            /* Oculta a barra interna porque usamos uma barra personalizada. */
             --poster-color: #191919;
             --progress-bar-color: transparent;
             --progress-bar-height: 0;
@@ -127,8 +124,6 @@
             padding: 40px;
             background: #191919;
             pointer-events: none;
-            opacity: 1;
-            visibility: visible;
         }
 
         #posterImg {
@@ -167,11 +162,11 @@
         }
 
         @keyframes progresso-indeterminado {
-            0% {
+            from {
                 transform: translateX(-120%);
             }
 
-            100% {
+            to {
                 transform: translateX(360%);
             }
         }
@@ -279,8 +274,8 @@
             }
 
             #progressWrap.indeterminado #progressBar {
-                animation: none;
                 width: 35%;
+                animation: none;
                 transform: none;
             }
         }
@@ -315,7 +310,7 @@
             <div id="progressBar"></div>
         </div>
 
-        <div id="progressTexto">Carregando modelo 3D... 0%</div>
+        <div id="progressTexto">Carregando modelo 3D...</div>
     </div>
 
     <div id="erro" role="alert" aria-live="assertive">
@@ -326,9 +321,12 @@
         id="viewer"
         alt="Visualização 3D do produto"
         camera-controls
+        auto-rotate
         auto-rotate-delay="0"
         rotation-per-second="15deg"
         exposure="1"
+        shadow-intensity="1"
+        shadow-softness="1"
         interaction-prompt="none"
         loading="eager"
         reveal="auto"
@@ -360,14 +358,9 @@
 
             let carregado = false;
             let erroExibido = false;
-            let contextRecuperado = false;
             let timeoutCarregamento = null;
             let timeoutBiblioteca = null;
             let ultimoPercentual = -1;
-            let autoRotateAtivo = false;
-
-            const chaveRecuperacaoWebGL =
-                "viewer3d-reload-" + (model || "sem-modelo");
 
             function modeloValido(nome) {
                 if (typeof nome !== "string") {
@@ -425,29 +418,6 @@
                 if (timeoutBiblioteca !== null) {
                     window.clearTimeout(timeoutBiblioteca);
                     timeoutBiblioteca = null;
-                }
-            }
-
-            function esconderPoster() {
-                // Sem transição: o primeiro frame fica visível imediatamente.
-                posterLayer.hidden = true;
-            }
-
-            function ativarEfeitosDepoisDoPrimeiroFrame() {
-                const ativar = () => {
-                    viewer.shadowIntensity = 1;
-                    viewer.shadowSoftness = 1;
-                    autoRotateAtivo = true;
-
-                    if (!document.hidden) {
-                        viewer.setAttribute("auto-rotate", "");
-                    }
-                };
-
-                if ("requestIdleCallback" in window) {
-                    window.requestIdleCallback(ativar, { timeout: 500 });
-                } else {
-                    window.setTimeout(ativar, 0);
                 }
             }
 
@@ -511,10 +481,10 @@
                 }
 
                 progressWrap.classList.remove("indeterminado");
-                ultimoPercentual = percentual;
                 progressBar.style.transform = "none";
                 progressBar.style.width = percentual + "%";
                 progressWrap.setAttribute("aria-valuenow", String(percentual));
+                ultimoPercentual = percentual;
 
                 if (!finalizado && percentual >= 98) {
                     progressTexto.textContent = "Preparando visualização 3D...";
@@ -542,11 +512,6 @@
                     return false;
                 }
 
-                /*
-                 * O preload do <head> já pode estar baixando este mesmo arquivo.
-                 * O src é definido imediatamente para que o model-viewer reutilize
-                 * a resposta assim que o custom element for registrado.
-                 */
                 viewer.setAttribute("src", glbUrl.href);
                 iniciarTimeoutCarregamento();
                 return true;
@@ -597,19 +562,10 @@
                 () => {
                     carregado = true;
                     limparTimeouts();
-
-                    try {
-                        sessionStorage.removeItem(chaveRecuperacaoWebGL);
-                    } catch (error) {
-                        console.warn(
-                            "Não foi possível limpar a recuperação WebGL:",
-                            error
-                        );
-                    }
-
                     atualizarProgresso(1, true);
-                    esconderPoster();
-                    ativarEfeitosDepoisDoPrimeiroFrame();
+
+                    // Sem transição: mostra imediatamente o primeiro frame pronto.
+                    posterLayer.hidden = true;
                 },
                 { once: true }
             );
@@ -617,48 +573,9 @@
             viewer.addEventListener("error", event => {
                 console.error("Erro do model-viewer ao carregar o GLB:", event);
 
-                const tipoErro = event?.detail?.type;
-
-                if (
-                    tipoErro === "webglcontextlost" &&
-                    !contextRecuperado
-                ) {
-                    let jaTentou = false;
-
-                    try {
-                        jaTentou =
-                            sessionStorage.getItem(chaveRecuperacaoWebGL) === "1";
-                    } catch (error) {
-                        console.warn("sessionStorage indisponível:", error);
-                    }
-
-                    if (jaTentou) {
-                        mostrarErro(
-                            "Este dispositivo não tem memória suficiente para exibir este modelo 3D."
-                        );
-                        return;
-                    }
-
-                    contextRecuperado = true;
-
-                    try {
-                        sessionStorage.setItem(chaveRecuperacaoWebGL, "1");
-                    } catch (error) {
-                        console.warn(
-                            "Não foi possível registrar a recuperação WebGL:",
-                            error
-                        );
-                    }
-
-                    window.setTimeout(() => {
-                        window.location.reload();
-                    }, 500);
-                    return;
-                }
-
                 const detalhe =
                     event?.detail?.sourceError?.message ||
-                    tipoErro ||
+                    event?.detail?.type ||
                     "";
 
                 mostrarErro(
@@ -688,13 +605,9 @@
             });
 
             document.addEventListener("visibilitychange", () => {
-                if (!autoRotateAtivo) {
-                    return;
-                }
-
                 if (document.hidden) {
                     viewer.removeAttribute("auto-rotate");
-                } else {
+                } else if (carregado) {
                     viewer.setAttribute("auto-rotate", "");
                 }
             });

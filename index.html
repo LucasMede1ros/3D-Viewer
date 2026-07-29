@@ -12,32 +12,12 @@
     <link rel="icon" href="data:,">
 
     <!-- Conexões críticas iniciadas o mais cedo possível. -->
-    <link rel="preconnect" href="https://ajax.googleapis.com" crossorigin>
-    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://drivers.pichau.com.br" crossorigin>
 
     <!--
-        Todos os modelos deste projeto usam KTX2. O WASM do transcoder é
-        antecipado sem competir em prioridade alta com o GLB principal.
-    -->
-    <link
-        rel="preload"
-        href="https://www.gstatic.com/basis-universal/versioned/2021-04-15-ba1c3e4/basis_transcoder.wasm"
-        as="fetch"
-        type="application/wasm"
-        crossorigin="anonymous">
-
-    <script>
-        self.ModelViewerElement = self.ModelViewerElement || {};
-        self.ModelViewerElement.ktx2TranscoderLocation =
-            "https://www.gstatic.com/basis-universal/versioned/2021-04-15-ba1c3e4/";
-        self.ModelViewerElement.powerPreference = "high-performance";
-    </script>
-
-    <!--
         Inicia o download do GLB antes de a biblioteca model-viewer terminar.
-        O preload usa o mesmo modo sem credenciais adotado pelo model-viewer,
-        permitindo que a resposta seja reaproveitada quando o componente iniciar.
+        Como o GLB está na mesma origem, o preload não força modo CORS.
     -->
     <script>
         (() => {
@@ -72,7 +52,6 @@
                 preload.as = "fetch";
                 preload.type = "model/gltf-binary";
                 preload.href = glbUrl.href;
-                preload.crossOrigin = "anonymous";
                 preload.fetchPriority = "high";
 
                 document.head.appendChild(preload);
@@ -85,7 +64,7 @@
     <!-- Biblioteca em prioridade normal; o GLB continua sendo o recurso principal. -->
     <script
         type="module"
-        src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.3.1/model-viewer.min.js"
+        src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"
         crossorigin="anonymous">
     </script>
 

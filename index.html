@@ -59,6 +59,9 @@
         })();
     </script>
 
+    <!-- Antecipação segura do módulo, sem alterar a renderização. -->
+    <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer.min.js" crossorigin="anonymous">
+
     <!-- Versão fixa para evitar mudanças inesperadas. -->
     <script
         type="module"
@@ -293,7 +296,7 @@
     <div id="posterLayer" aria-hidden="true">
         <img
             id="posterImg"
-            src="https://drivers.pichau.com.br/pichaugaming/Banner/Design-Lab-White.png"
+            data-src="https://drivers.pichau.com.br/pichaugaming/Banner/Design-Lab-White.png"
             alt="Pichau Design Lab"
             decoding="async"
             fetchpriority="low"
@@ -321,7 +324,6 @@
         id="viewer"
         alt="Visualização 3D do produto"
         camera-controls
-        auto-rotate
         auto-rotate-delay="0"
         rotation-per-second="15deg"
         exposure="1"
@@ -436,21 +438,41 @@
             }
 
             function aplicarPoster() {
-                if (!poster) {
+                const conexao = navigator.connection ||
+                    navigator.mozConnection ||
+                    navigator.webkitConnection;
+
+                const redeLimitada = Boolean(
+                    conexao &&
+                    (conexao.saveData || /(^|-)2g$/.test(conexao.effectiveType || ""))
+                );
+
+                if (poster) {
+                    try {
+                        const posterUrl = new URL(poster, window.location.href);
+
+                        if (
+                            posterUrl.protocol === "https:" ||
+                            posterUrl.protocol === "http:"
+                        ) {
+                            posterImg.src = posterUrl.href;
+                            return;
+                        }
+                    } catch (error) {
+                        console.warn("URL do poster inválida:", error);
+                    }
+                }
+
+                // Em conexões móveis muito lentas, evita disputar banda com o GLB.
+                if (redeLimitada) {
+                    posterImg.hidden = true;
                     return;
                 }
 
-                try {
-                    const posterUrl = new URL(poster, window.location.href);
+                const posterPadrao = posterImg.dataset.src;
 
-                    if (
-                        posterUrl.protocol === "https:" ||
-                        posterUrl.protocol === "http:"
-                    ) {
-                        posterImg.src = posterUrl.href;
-                    }
-                } catch (error) {
-                    console.warn("URL do poster inválida:", error);
+                if (posterPadrao) {
+                    posterImg.src = posterPadrao;
                 }
             }
 
@@ -566,6 +588,13 @@
 
                     // Sem transição: mostra imediatamente o primeiro frame pronto.
                     posterLayer.hidden = true;
+
+                    // A rotação começa somente depois do primeiro frame já estar visível.
+                    window.requestAnimationFrame(() => {
+                        if (!document.hidden) {
+                            viewer.setAttribute("auto-rotate", "");
+                        }
+                    });
                 },
                 { once: true }
             );

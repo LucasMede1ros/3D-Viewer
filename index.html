@@ -372,7 +372,7 @@
         interaction-prompt="none"
         loading="eager"
         reveal="auto"
-        minimum-render-scale="0.35"
+        minimum-render-scale="1"
         disable-pan>
     </model-viewer>
 
@@ -498,15 +498,17 @@
             }
 
             function ativarEfeitosDepoisDoPrimeiroFrame() {
+                if (!viewer.isConnected || erroExibido) {
+                    return;
+                }
+
+                // Mantém a qualidade visual máxima assim que o modelo aparece.
+                viewer.shadowIntensity = 1;
+                viewer.shadowSoftness = 1;
+
+                // A rotação pode esperar sem afetar a qualidade da primeira imagem.
                 executarQuandoOcioso(() => {
-                    if (!viewer.isConnected || erroExibido) {
-                        return;
-                    }
-
-                    viewer.shadowIntensity = 1;
-                    viewer.shadowSoftness = 1;
-
-                    if (autoRotate) {
+                    if (autoRotate && viewer.isConnected && !erroExibido) {
                         viewer.setAttribute("auto-rotate", "");
                     }
                 });

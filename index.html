@@ -141,8 +141,6 @@
         min-camera-orbit="auto auto 65%"
         max-camera-orbit="auto auto 180%"
         interpolation-decay="100"
-        auto-rotate-delay="0"
-        rotation-per-second="12deg"
         alt="Visualização 3D do produto">
     </model-viewer>
 
@@ -166,7 +164,6 @@
 
             const parentOrigin = "https://pichaugaming.com.br";
             const timeout = window.setTimeout(() => mostrarErro("O modelo 3D demorou muito para carregar."), 180000);
-            let rotacaoAtiva = false;
 
             function modeloValido() {
                 return nome &&
@@ -234,21 +231,11 @@
                 window.clearTimeout(timeout);
                 progresso.style.width = "100%";
                 carregamento.hidden = true;
-                rotacaoAtiva = true;
-
-                requestAnimationFrame(() => {
-                    if (!document.hidden) viewer.setAttribute("auto-rotate", "");
-                });
             }, { once: true });
 
             viewer.addEventListener("error", event => {
                 console.error("Erro ao carregar o modelo 3D:", event);
                 mostrarErro("Não foi possível carregar o modelo 3D.");
-            });
-
-            document.addEventListener("visibilitychange", () => {
-                if (!rotacaoAtiva) return;
-                viewer.toggleAttribute("auto-rotate", !document.hidden);
             });
 
             logo.addEventListener("error", () => logo.hidden = true, { once: true });

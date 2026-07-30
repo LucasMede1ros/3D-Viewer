@@ -11,62 +11,71 @@
     <meta name="robots" content="noindex, nofollow">
     <link rel="icon" href="data:,">
 
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <!-- Conexões críticas iniciadas o mais cedo possível. -->
+    <link rel="preconnect" href="https://unpkg.com" crossorigin>
     <link rel="preconnect" href="https://drivers.pichau.com.br" crossorigin>
 
     <!--
-        Inicia antecipadamente o download do GLB.
-        O arquivo é same-origin, portanto não utiliza crossorigin.
+        Sem override de ktx2TranscoderLocation e sem powerPreference
+        "high-performance": essas duas mudanças quebraram a renderização
+        (nenhum modelo KTX2 carregava) e/ou arriscavam reintroduzir o
+        "webglcontextlost" no Safari/iPhone que já corrigimos.
+        O model-viewer já vem com um transcoder KTX2 padrão que funcionou
+        nos testes anteriores.
+    -->
+
+    <!--
+        Inicia o download do GLB antes de a biblioteca model-viewer terminar.
+        Sem crossOrigin: o arquivo é same-origin (mesmo domínio do
+        index.html); esse atributo já causou falha de carregamento
+        especificamente no Safari no passado.
     -->
     <script>
         (() => {
             "use strict";
 
-            const nome = new URLSearchParams(window.location.search).get("model");
+            const model = new URLSearchParams(window.location.search).get("model");
 
-            if (typeof nome !== "string") {
+            if (typeof model !== "string") {
                 return;
             }
 
-            const arquivo = nome.trim();
-            const valido =
-                arquivo.length > 0 &&
-                arquivo.toLowerCase().endsWith(".glb") &&
-                !arquivo.includes("..") &&
-                !arquivo.includes("/") &&
-                !arquivo.includes("\\") &&
-                !arquivo.includes("\0");
+            const arquivo = model.trim();
 
-            if (!valido) {
+            if (
+                !arquivo ||
+                !arquivo.toLowerCase().endsWith(".glb") ||
+                arquivo.includes("..") ||
+                arquivo.includes("/") ||
+                arquivo.includes("\\") ||
+                arquivo.includes("\0")
+            ) {
                 return;
             }
 
             try {
-                const url = new URL("./" + arquivo, window.location.href);
+                const glbUrl = new URL("./" + arquivo, window.location.href);
 
-                window.__viewer3DGlbUrl = url.href;
+                window.__viewer3DGlbUrl = glbUrl.href;
 
                 const preload = document.createElement("link");
                 preload.rel = "preload";
                 preload.as = "fetch";
                 preload.type = "model/gltf-binary";
-                preload.href = url.href;
+                preload.href = glbUrl.href;
+                preload.fetchPriority = "high";
 
                 document.head.appendChild(preload);
             } catch (error) {
-                console.warn("Não foi possível antecipar o modelo 3D:", error);
+                console.warn("Não foi possível iniciar o preload do modelo 3D:", error);
             }
         })();
     </script>
 
-    <!-- Antecipação segura do módulo, sem alterar a renderização. -->
-    <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer.min.js" crossorigin="anonymous">
-
-    <!-- Versão fixa para evitar mudanças inesperadas. -->
+    <!-- Versão fixa e CDN conhecidos por funcionar. -->
     <script
         type="module"
-        src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer.min.js"
-        crossorigin="anonymous">
+        src="https://unpkg.com/@google/model-viewer@4.1.0/dist/model-viewer.min.js">
     </script>
 
     <style>
@@ -103,10 +112,11 @@
             height: 100vh;
             height: 100svh;
             height: 100dvh;
+            background: #191919;
             border: 0;
             outline: 0;
-            background: #191919;
 
+            /* Oculta a barra interna porque usamos uma barra personalizada. */
             --poster-color: #191919;
             --progress-bar-color: transparent;
             --progress-bar-height: 0;
@@ -127,6 +137,8 @@
             padding: 40px;
             background: #191919;
             pointer-events: none;
+            opacity: 1;
+            visibility: visible;
         }
 
         #posterImg {
@@ -165,11 +177,11 @@
         }
 
         @keyframes progresso-indeterminado {
-            from {
+            0% {
                 transform: translateX(-120%);
             }
 
-            to {
+            100% {
                 transform: translateX(360%);
             }
         }
@@ -277,8 +289,8 @@
             }
 
             #progressWrap.indeterminado #progressBar {
-                width: 35%;
                 animation: none;
+                width: 35%;
                 transform: none;
             }
         }
@@ -296,7 +308,7 @@
     <div id="posterLayer" aria-hidden="true">
         <img
             id="posterImg"
-            data-src="https://drivers.pichau.com.br/pichaugaming/Banner/Design-Lab-White.png"
+            src="https://drivers.pichau.com.br/pichaugaming/Banner/Design-Lab-White.png"
             alt="Pichau Design Lab"
             decoding="async"
             fetchpriority="low"
@@ -313,7 +325,7 @@
             <div id="progressBar"></div>
         </div>
 
-        <div id="progressTexto">Carregando modelo 3D...</div>
+        <div id="progressTexto">Carregando modelo 3D... 0%</div>
     </div>
 
     <div id="erro" role="alert" aria-live="assertive">
@@ -327,8 +339,6 @@
         auto-rotate-delay="0"
         rotation-per-second="15deg"
         exposure="1"
-        shadow-intensity="1"
-        shadow-softness="1"
         interaction-prompt="none"
         loading="eager"
         reveal="auto"
@@ -360,9 +370,29 @@
 
             let carregado = false;
             let erroExibido = false;
+            let contextRecuperado = false;
             let timeoutCarregamento = null;
             let timeoutBiblioteca = null;
+
+            /*
+             * "coarse pointer + sem hover" identifica celular/tablet de forma
+             * mais confiável que largura de tela (evita classificar notebook
+             * pequeno como mobile). Usado para não penalizar a qualidade no
+             * PC, que tem GPU mais forte e tela onde a nitidez importa mais.
+             */
+            const dispositivoMobile =
+                window.matchMedia &&
+                window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+
             let ultimoPercentual = -1;
+            let autoRotateAtivo = false;
+
+            if (dispositivoMobile) {
+                viewer.setAttribute("minimum-render-scale", "0.5");
+            }
+
+            const chaveRecuperacaoWebGL =
+                "viewer3d-reload-" + (model || "sem-modelo");
 
             function modeloValido(nome) {
                 if (typeof nome !== "string") {
@@ -423,6 +453,29 @@
                 }
             }
 
+            function esconderPoster() {
+                // Sem transição: o primeiro frame fica visível imediatamente.
+                posterLayer.hidden = true;
+            }
+
+            function ativarEfeitosDepoisDoPrimeiroFrame() {
+                const ativar = () => {
+                    viewer.shadowIntensity = dispositivoMobile ? 0.5 : 1;
+                    viewer.shadowSoftness = dispositivoMobile ? 0.5 : 1;
+                    autoRotateAtivo = true;
+
+                    if (!document.hidden) {
+                        viewer.setAttribute("auto-rotate", "");
+                    }
+                };
+
+                if ("requestIdleCallback" in window) {
+                    window.requestIdleCallback(ativar, { timeout: 500 });
+                } else {
+                    window.setTimeout(ativar, 0);
+                }
+            }
+
             function mostrarErro(mensagem) {
                 if (erroExibido) {
                     return;
@@ -438,41 +491,21 @@
             }
 
             function aplicarPoster() {
-                const conexao = navigator.connection ||
-                    navigator.mozConnection ||
-                    navigator.webkitConnection;
-
-                const redeLimitada = Boolean(
-                    conexao &&
-                    (conexao.saveData || /(^|-)2g$/.test(conexao.effectiveType || ""))
-                );
-
-                if (poster) {
-                    try {
-                        const posterUrl = new URL(poster, window.location.href);
-
-                        if (
-                            posterUrl.protocol === "https:" ||
-                            posterUrl.protocol === "http:"
-                        ) {
-                            posterImg.src = posterUrl.href;
-                            return;
-                        }
-                    } catch (error) {
-                        console.warn("URL do poster inválida:", error);
-                    }
-                }
-
-                // Em conexões móveis muito lentas, evita disputar banda com o GLB.
-                if (redeLimitada) {
-                    posterImg.hidden = true;
+                if (!poster) {
                     return;
                 }
 
-                const posterPadrao = posterImg.dataset.src;
+                try {
+                    const posterUrl = new URL(poster, window.location.href);
 
-                if (posterPadrao) {
-                    posterImg.src = posterPadrao;
+                    if (
+                        posterUrl.protocol === "https:" ||
+                        posterUrl.protocol === "http:"
+                    ) {
+                        posterImg.src = posterUrl.href;
+                    }
+                } catch (error) {
+                    console.warn("URL do poster inválida:", error);
                 }
             }
 
@@ -503,10 +536,10 @@
                 }
 
                 progressWrap.classList.remove("indeterminado");
+                ultimoPercentual = percentual;
                 progressBar.style.transform = "none";
                 progressBar.style.width = percentual + "%";
                 progressWrap.setAttribute("aria-valuenow", String(percentual));
-                ultimoPercentual = percentual;
 
                 if (!finalizado && percentual >= 98) {
                     progressTexto.textContent = "Preparando visualização 3D...";
@@ -534,6 +567,11 @@
                     return false;
                 }
 
+                /*
+                 * O preload do <head> já pode estar baixando este mesmo arquivo.
+                 * O src é definido imediatamente para que o model-viewer reutilize
+                 * a resposta assim que o custom element for registrado.
+                 */
                 viewer.setAttribute("src", glbUrl.href);
                 iniciarTimeoutCarregamento();
                 return true;
@@ -584,17 +622,19 @@
                 () => {
                     carregado = true;
                     limparTimeouts();
+
+                    try {
+                        sessionStorage.removeItem(chaveRecuperacaoWebGL);
+                    } catch (error) {
+                        console.warn(
+                            "Não foi possível limpar a recuperação WebGL:",
+                            error
+                        );
+                    }
+
                     atualizarProgresso(1, true);
-
-                    // Sem transição: mostra imediatamente o primeiro frame pronto.
-                    posterLayer.hidden = true;
-
-                    // A rotação começa somente depois do primeiro frame já estar visível.
-                    window.requestAnimationFrame(() => {
-                        if (!document.hidden) {
-                            viewer.setAttribute("auto-rotate", "");
-                        }
-                    });
+                    esconderPoster();
+                    ativarEfeitosDepoisDoPrimeiroFrame();
                 },
                 { once: true }
             );
@@ -602,9 +642,48 @@
             viewer.addEventListener("error", event => {
                 console.error("Erro do model-viewer ao carregar o GLB:", event);
 
+                const tipoErro = event?.detail?.type;
+
+                if (
+                    tipoErro === "webglcontextlost" &&
+                    !contextRecuperado
+                ) {
+                    let jaTentou = false;
+
+                    try {
+                        jaTentou =
+                            sessionStorage.getItem(chaveRecuperacaoWebGL) === "1";
+                    } catch (error) {
+                        console.warn("sessionStorage indisponível:", error);
+                    }
+
+                    if (jaTentou) {
+                        mostrarErro(
+                            "Este dispositivo não tem memória suficiente para exibir este modelo 3D."
+                        );
+                        return;
+                    }
+
+                    contextRecuperado = true;
+
+                    try {
+                        sessionStorage.setItem(chaveRecuperacaoWebGL, "1");
+                    } catch (error) {
+                        console.warn(
+                            "Não foi possível registrar a recuperação WebGL:",
+                            error
+                        );
+                    }
+
+                    window.setTimeout(() => {
+                        window.location.reload();
+                    }, 500);
+                    return;
+                }
+
                 const detalhe =
                     event?.detail?.sourceError?.message ||
-                    event?.detail?.type ||
+                    tipoErro ||
                     "";
 
                 mostrarErro(
@@ -634,9 +713,13 @@
             });
 
             document.addEventListener("visibilitychange", () => {
+                if (!autoRotateAtivo) {
+                    return;
+                }
+
                 if (document.hidden) {
                     viewer.removeAttribute("auto-rotate");
-                } else if (carregado) {
+                } else {
                     viewer.setAttribute("auto-rotate", "");
                 }
             });

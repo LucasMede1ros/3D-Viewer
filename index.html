@@ -133,7 +133,6 @@
         exposure="1"
         shadow-intensity="1"
         shadow-softness="0.85"
-        minimum-render-scale="1"
         camera-orbit="0deg 75deg 105%"
         field-of-view="30deg"
         min-field-of-view="22deg"
@@ -163,7 +162,10 @@
             const fechar = document.getElementById("fechar");
 
             const parentOrigin = "https://pichaugaming.com.br";
-            const timeout = window.setTimeout(() => mostrarErro("O modelo 3D demorou muito para carregar."), 180000);
+            const timeout = window.setTimeout(
+                () => mostrarErro("O modelo 3D demorou muito para carregar."),
+                180000
+            );
 
             function modeloValido() {
                 return nome &&
@@ -206,7 +208,9 @@
             if (poster) {
                 try {
                     const url = new URL(poster, location.href);
-                    if (url.protocol === "https:" || url.protocol === "http:") logo.src = url.href;
+                    if (url.protocol === "https:" || url.protocol === "http:") {
+                        logo.src = url.href;
+                    }
                 } catch (_) {}
             }
 
@@ -215,11 +219,27 @@
                 logo.alt = alt;
             }
 
-            viewer.src = new URL("./" + nome, location.href).href;
+            /*
+             * minimumRenderScale é uma propriedade estática do model-viewer.
+             * Em 1, desativa a redução dinâmica de resolução durante o movimento.
+             */
+            customElements.whenDefined("model-viewer").then(() => {
+                const ModelViewerElement = customElements.get("model-viewer");
+                ModelViewerElement.minimumRenderScale = 1;
+                viewer.src = new URL("./" + nome, location.href).href;
+            }).catch(error => {
+                console.error("Erro ao iniciar o model-viewer:", error);
+                mostrarErro("Não foi possível iniciar o visualizador 3D.");
+            });
+
             avisarParent("open");
 
             viewer.addEventListener("progress", event => {
-                const valor = Math.min(99, Math.round((event.detail?.totalProgress || 0) * 100));
+                const valor = Math.min(
+                    99,
+                    Math.round((event.detail?.totalProgress || 0) * 100)
+                );
+
                 progresso.style.width = valor + "%";
                 barra.setAttribute("aria-valuenow", String(valor));
                 texto.textContent = valor >= 98
@@ -238,10 +258,16 @@
                 mostrarErro("Não foi possível carregar o modelo 3D.");
             });
 
-            logo.addEventListener("error", () => logo.hidden = true, { once: true });
+            logo.addEventListener("error", () => {
+                logo.hidden = true;
+            }, { once: true });
+
             fechar.addEventListener("click", fecharVisualizador);
+
             document.addEventListener("keydown", event => {
-                if (event.key === "Escape") fecharVisualizador();
+                if (event.key === "Escape") {
+                    fecharVisualizador();
+                }
             });
         })();
     </script>

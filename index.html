@@ -4,18 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="robots" content="noindex, nofollow">
+
     <title>Visualizador 3D</title>
 
     <link rel="icon" href="data:,">
+
     <link rel="preconnect" href="https://ajax.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://drivers.pichau.com.br" crossorigin>
 
-    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.3.1/model-viewer.min.js"></script>
+    <script
+        type="module"
+        src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.3.1/model-viewer.min.js">
+    </script>
 
     <style>
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+        }
 
-        html, body {
+        html,
+        body {
             width: 100%;
             height: 100%;
             margin: 0;
@@ -24,7 +32,10 @@
             font-family: Poppins, Arial, sans-serif;
         }
 
-        body, model-viewer, #carregamento, #erro {
+        body,
+        model-viewer,
+        #carregamento,
+        #erro {
             width: 100%;
             height: 100vh;
             height: 100dvh;
@@ -35,77 +46,142 @@
             inset: 0;
             display: block;
             background: #191919;
+
             --poster-color: #191919;
             --progress-bar-height: 0;
+
             touch-action: none;
         }
 
-        #carregamento, #erro {
+        /* =========================
+           CARREGAMENTO
+        ========================= */
+
+        #carregamento,
+        #erro {
             position: fixed;
             inset: 0;
+
             display: flex;
             flex-direction: column;
+
             align-items: center;
             justify-content: center;
+
             padding: 24px;
+
             background: #191919;
         }
 
-        #carregamento { z-index: 10; pointer-events: none; }
-        #erro { z-index: 20; display: none; color: #fff; text-align: center; }
+        #carregamento {
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        #erro {
+            z-index: 20;
+
+            display: none;
+
+            color: #fff;
+            text-align: center;
+        }
 
         #logo {
             max-width: min(420px, 82vw);
             max-height: 55vh;
+
             margin-bottom: 28px;
+
             object-fit: contain;
         }
+
+        /* =========================
+           BARRA DE PROGRESSO
+        ========================= */
 
         #barra {
             width: min(320px, 70vw);
             height: 6px;
+
             overflow: hidden;
+
             background: rgba(255, 255, 255, 0.15);
+
             border-radius: 999px;
         }
 
         #progresso {
             width: 0;
             height: 100%;
+
             background: #d43043;
+
             border-radius: inherit;
+
             transition: width 0.12s linear;
         }
 
         #texto {
             margin-top: 10px;
+
             color: #ccc;
+
             font-size: 13px;
         }
 
+        /* =========================
+           BOTÃO FECHAR
+        ========================= */
+
         #fechar {
             position: fixed;
+
             top: calc(16px + env(safe-area-inset-top, 0px));
             right: calc(16px + env(safe-area-inset-right, 0px));
+
             z-index: 30;
+
             padding: 10px 16px;
+
             border: 0;
             border-radius: 6px;
+
             background: #d43043;
             color: #fff;
+
             font: 600 14px Poppins, Arial, sans-serif;
+
             cursor: pointer;
+
             touch-action: manipulation;
         }
 
-        #fechar:active { transform: scale(0.97); }
-        [hidden] { display: none !important; }
+        #fechar:hover {
+            background: #b92738;
+        }
+
+        #fechar:active {
+            transform: scale(0.97);
+        }
+
+        [hidden] {
+            display: none !important;
+        }
     </style>
 </head>
-<body>
-    <button id="fechar" type="button">Fechar</button>
 
+<body>
+
+    <!-- BOTÃO FECHAR -->
+    <button id="fechar" type="button">
+        Fechar
+    </button>
+
+
+    <!-- TELA DE CARREGAMENTO -->
     <div id="carregamento">
+
         <img
             id="logo"
             src="https://drivers.pichau.com.br/pichaugaming/Banner/Design-Lab-White.png"
@@ -113,163 +189,562 @@
             decoding="async"
             fetchpriority="low">
 
-        <div id="barra" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div
+            id="barra"
+            role="progressbar"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="0">
+
             <div id="progresso"></div>
+
         </div>
-        <div id="texto">Carregando modelo 3D... 0%</div>
+
+        <div id="texto">
+            Carregando modelo 3D... 0%
+        </div>
+
     </div>
 
-    <div id="erro" role="alert">Não foi possível carregar o modelo 3D.</div>
 
+    <!-- ERRO -->
+    <div id="erro" role="alert">
+        Não foi possível carregar o modelo 3D.
+    </div>
+
+
+    <!-- VISUALIZADOR -->
     <model-viewer
         id="viewer"
+
         camera-controls
+
         disable-pan
+
         interaction-prompt="none"
+
         loading="eager"
+
         reveal="auto"
+
         environment-image="neutral"
+
         tone-mapping="commerce"
+
         exposure="1"
+
         shadow-intensity="1"
+
         shadow-softness="0.85"
+
         camera-orbit="0deg 75deg 105%"
+
         field-of-view="30deg"
+
         min-field-of-view="22deg"
+
         max-field-of-view="45deg"
+
         min-camera-orbit="auto auto 65%"
+
         max-camera-orbit="auto auto 180%"
+
         interpolation-decay="100"
+
         alt="Visualização 3D do produto">
     </model-viewer>
 
+
     <script>
         (() => {
+
             "use strict";
 
-            const params = new URLSearchParams(location.search);
-            const nome = params.get("model")?.trim();
-            const poster = params.get("poster");
-            const alt = params.get("alt")?.trim();
 
-            const viewer = document.getElementById("viewer");
-            const carregamento = document.getElementById("carregamento");
-            const logo = document.getElementById("logo");
-            const barra = document.getElementById("barra");
-            const progresso = document.getElementById("progresso");
-            const texto = document.getElementById("texto");
-            const erro = document.getElementById("erro");
-            const fechar = document.getElementById("fechar");
+            /* =========================
+               PARÂMETROS
+            ========================= */
 
-            const parentOrigin = "https://pichaugaming.com.br";
-            const timeout = window.setTimeout(
-                () => mostrarErro("O modelo 3D demorou muito para carregar."),
-                180000
+            const params = new URLSearchParams(
+                window.location.search
             );
 
+            const nome = params
+                .get("model")
+                ?.trim();
+
+            const poster = params.get("poster");
+
+            const alt = params
+                .get("alt")
+                ?.trim();
+
+
+            /* =========================
+               ELEMENTOS
+            ========================= */
+
+            const viewer =
+                document.getElementById("viewer");
+
+            const carregamento =
+                document.getElementById("carregamento");
+
+            const logo =
+                document.getElementById("logo");
+
+            const barra =
+                document.getElementById("barra");
+
+            const progresso =
+                document.getElementById("progresso");
+
+            const texto =
+                document.getElementById("texto");
+
+            const erro =
+                document.getElementById("erro");
+
+            const fechar =
+                document.getElementById("fechar");
+
+
+            /* =========================
+               CONFIGURAÇÕES
+            ========================= */
+
+            const parentOrigin =
+                "https://pichaugaming.com.br";
+
+
+            const timeout = window.setTimeout(
+
+                () => {
+
+                    mostrarErro(
+                        "O modelo 3D demorou muito para carregar."
+                    );
+
+                },
+
+                180000
+
+            );
+
+
+            /* =========================
+               VALIDAR MODELO
+            ========================= */
+
             function modeloValido() {
-                return nome &&
-                    nome.toLowerCase().endsWith(".glb") &&
-                    !nome.includes("..") &&
-                    !nome.includes("/") &&
-                    !nome.includes("\\") &&
-                    !nome.includes("\0");
+
+                if (!nome) {
+                    return false;
+                }
+
+
+                /*
+                 * Permite:
+                 *
+                 * omega-s/onix.glb
+                 * cycles-z/moon.glb
+                 * super-nova-signature/onix.glb
+                 *
+                 * Mas bloqueia:
+                 *
+                 * ../arquivo.glb
+                 * /arquivo.glb
+                 * \arquivo.glb
+                 */
+
+                const normalizado =
+                    nome.replace(/\\/g, "/");
+
+
+                if (
+                    !normalizado
+                        .toLowerCase()
+                        .endsWith(".glb")
+                ) {
+                    return false;
+                }
+
+
+                if (
+                    normalizado.includes("..")
+                ) {
+                    return false;
+                }
+
+
+                if (
+                    normalizado.startsWith("/")
+                ) {
+                    return false;
+                }
+
+
+                if (
+                    normalizado.includes("\0")
+                ) {
+                    return false;
+                }
+
+
+                return true;
             }
 
+
+            /* =========================
+               ERRO
+            ========================= */
+
             function mostrarErro(mensagem) {
+
                 window.clearTimeout(timeout);
+
                 carregamento.hidden = true;
+
                 viewer.hidden = true;
+
                 erro.textContent = mensagem;
+
                 erro.style.display = "flex";
             }
 
+
+            /* =========================
+               COMUNICAÇÃO WORDPRESS
+            ========================= */
+
             function avisarParent(action) {
+
                 if (window.parent !== window) {
-                    window.parent.postMessage({ type: "viewer3d", action }, parentOrigin);
+
+                    window.parent.postMessage(
+
+                        {
+                            type: "viewer3d",
+                            action: action
+                        },
+
+                        parentOrigin
+
+                    );
+
                 }
+
             }
+
+
+            /* =========================
+               FECHAR
+            ========================= */
 
             function fecharVisualizador() {
+
                 if (window.parent !== window) {
+
                     avisarParent("close");
-                } else if (history.length > 1) {
-                    history.back();
-                } else {
-                    location.href = parentOrigin;
+
                 }
+
+                else if (history.length > 1) {
+
+                    history.back();
+
+                }
+
+                else {
+
+                    window.location.href =
+                        parentOrigin;
+
+                }
+
             }
 
+
+            /* =========================
+               VERIFICAR MODELO
+            ========================= */
+
             if (!modeloValido()) {
-                mostrarErro("Modelo 3D não encontrado.");
+
+                mostrarErro(
+                    "Modelo 3D não encontrado."
+                );
+
                 return;
             }
 
+
+            /* =========================
+               POSTER PERSONALIZADO
+            ========================= */
+
             if (poster) {
+
                 try {
-                    const url = new URL(poster, location.href);
-                    if (url.protocol === "https:" || url.protocol === "http:") {
+
+                    const url =
+                        new URL(
+                            poster,
+                            window.location.href
+                        );
+
+
+                    if (
+                        url.protocol === "https:" ||
+                        url.protocol === "http:"
+                    ) {
+
                         logo.src = url.href;
+
                     }
-                } catch (_) {}
+
+                }
+
+                catch (_) {}
+
             }
+
+
+            /* =========================
+               ALT PERSONALIZADO
+            ========================= */
 
             if (alt) {
+
                 viewer.alt = alt;
+
                 logo.alt = alt;
+
             }
 
-            /*
-             * minimumRenderScale é uma propriedade estática do model-viewer.
-             * Em 1, desativa a redução dinâmica de resolução durante o movimento.
-             */
-            customElements.whenDefined("model-viewer").then(() => {
-                const ModelViewerElement = customElements.get("model-viewer");
-                ModelViewerElement.minimumRenderScale = 1;
-                viewer.src = new URL("./" + nome, location.href).href;
-            }).catch(error => {
-                console.error("Erro ao iniciar o model-viewer:", error);
-                mostrarErro("Não foi possível iniciar o visualizador 3D.");
-            });
+
+            /* =========================
+               CARREGAR MODEL-VIEWER
+            ========================= */
+
+            customElements
+                .whenDefined("model-viewer")
+                .then(() => {
+
+                    const ModelViewerElement =
+                        customElements.get(
+                            "model-viewer"
+                        );
+
+
+                    /*
+                     * Mantém resolução máxima
+                     * durante interação.
+                     */
+
+                    ModelViewerElement
+                        .minimumRenderScale = 1;
+
+
+                    /*
+                     * Agora aceita subpastas:
+                     *
+                     * ./omega-s/onix.glb
+                     * ./cycles-z/moon.glb
+                     * etc.
+                     */
+
+                    const modelUrl =
+                        new URL(
+                            "./" + nome,
+                            window.location.href
+                        );
+
+
+                    viewer.src =
+                        modelUrl.href;
+
+                })
+
+                .catch(error => {
+
+                    console.error(
+                        "Erro ao iniciar o model-viewer:",
+                        error
+                    );
+
+                    mostrarErro(
+                        "Não foi possível iniciar o visualizador 3D."
+                    );
+
+                });
+
+
+            /* =========================
+               AVISAR WORDPRESS
+            ========================= */
 
             avisarParent("open");
 
-            viewer.addEventListener("progress", event => {
-                const valor = Math.min(
-                    99,
-                    Math.round((event.detail?.totalProgress || 0) * 100)
-                );
 
-                progresso.style.width = valor + "%";
-                barra.setAttribute("aria-valuenow", String(valor));
-                texto.textContent = valor >= 98
-                    ? "Preparando visualização 3D..."
-                    : `Carregando modelo 3D... ${valor}%`;
-            });
+            /* =========================
+               PROGRESSO
+            ========================= */
 
-            viewer.addEventListener("load", () => {
-                window.clearTimeout(timeout);
-                progresso.style.width = "100%";
-                carregamento.hidden = true;
-            }, { once: true });
+            viewer.addEventListener(
+                "progress",
 
-            viewer.addEventListener("error", event => {
-                console.error("Erro ao carregar o modelo 3D:", event);
-                mostrarErro("Não foi possível carregar o modelo 3D.");
-            });
+                event => {
 
-            logo.addEventListener("error", () => {
-                logo.hidden = true;
-            }, { once: true });
+                    const valor =
+                        Math.min(
 
-            fechar.addEventListener("click", fecharVisualizador);
+                            99,
 
-            document.addEventListener("keydown", event => {
-                if (event.key === "Escape") {
-                    fecharVisualizador();
+                            Math.round(
+                                (
+                                    event.detail
+                                        ?.totalProgress || 0
+                                ) * 100
+                            )
+
+                        );
+
+
+                    progresso.style.width =
+                        valor + "%";
+
+
+                    barra.setAttribute(
+                        "aria-valuenow",
+                        String(valor)
+                    );
+
+
+                    texto.textContent =
+                        valor >= 98
+
+                            ? "Preparando visualização 3D..."
+
+                            : `Carregando modelo 3D... ${valor}%`;
+
                 }
-            });
+            );
+
+
+            /* =========================
+               MODELO CARREGADO
+            ========================= */
+
+            viewer.addEventListener(
+
+                "load",
+
+                () => {
+
+                    window.clearTimeout(
+                        timeout
+                    );
+
+
+                    progresso.style.width =
+                        "100%";
+
+
+                    barra.setAttribute(
+                        "aria-valuenow",
+                        "100"
+                    );
+
+
+                    carregamento.hidden =
+                        true;
+
+                },
+
+                {
+                    once: true
+                }
+
+            );
+
+
+            /* =========================
+               ERRO DO GLB
+            ========================= */
+
+            viewer.addEventListener(
+
+                "error",
+
+                event => {
+
+                    console.error(
+                        "Erro ao carregar o modelo 3D:",
+                        event
+                    );
+
+
+                    mostrarErro(
+                        "Não foi possível carregar o modelo 3D."
+                    );
+
+                }
+
+            );
+
+
+            /* =========================
+               ERRO DO LOGO
+            ========================= */
+
+            logo.addEventListener(
+
+                "error",
+
+                () => {
+
+                    logo.hidden = true;
+
+                },
+
+                {
+                    once: true
+                }
+
+            );
+
+
+            /* =========================
+               EVENTOS
+            ========================= */
+
+            fechar.addEventListener(
+                "click",
+                fecharVisualizador
+            );
+
+
+            document.addEventListener(
+
+                "keydown",
+
+                event => {
+
+                    if (
+                        event.key === "Escape"
+                    ) {
+
+                        fecharVisualizador();
+
+                    }
+
+                }
+
+            );
+
         })();
     </script>
+
 </body>
 </html>

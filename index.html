@@ -80,9 +80,7 @@
 
         #erro {
             z-index: 20;
-
             display: none;
-
             color: #fff;
             text-align: center;
         }
@@ -155,6 +153,10 @@
             cursor: pointer;
 
             touch-action: manipulation;
+
+            transition:
+                background 0.2s ease,
+                transform 0.1s ease;
         }
 
         #fechar:hover {
@@ -310,12 +312,42 @@
 
 
             /* =========================
-               CONFIGURAÇÕES
+               ORIGEM DA PÁGINA PAI
             ========================= */
 
-            const parentOrigin =
-                "https://pichaugaming.com.br";
+            /*
+             * Quando o viewer principal estiver dentro
+             * de uma rota bonita, por exemplo:
+             *
+             * /super-nova-signature/onix/
+             *
+             * document.referrer será o endereço da
+             * página que contém este viewer.
+             */
 
+            let parentOrigin = "*";
+
+            try {
+
+                if (document.referrer) {
+
+                    parentOrigin =
+                        new URL(
+                            document.referrer
+                        ).origin;
+
+                }
+
+            } catch (_) {
+
+                parentOrigin = "*";
+
+            }
+
+
+            /* =========================
+               TIMEOUT
+            ========================= */
 
             const timeout = window.setTimeout(
 
@@ -342,15 +374,14 @@
                     return false;
                 }
 
-
                 /*
-                 * Permite:
+                 * Permitido:
                  *
                  * omega-s/onix.glb
                  * cycles-z/moon.glb
                  * super-nova-signature/onix.glb
                  *
-                 * Mas bloqueia:
+                 * Bloqueado:
                  *
                  * ../arquivo.glb
                  * /arquivo.glb
@@ -396,30 +427,36 @@
 
 
             /* =========================
-               ERRO
+               MOSTRAR ERRO
             ========================= */
 
             function mostrarErro(mensagem) {
 
-                window.clearTimeout(timeout);
+                window.clearTimeout(
+                    timeout
+                );
 
                 carregamento.hidden = true;
 
                 viewer.hidden = true;
 
-                erro.textContent = mensagem;
+                erro.textContent =
+                    mensagem;
 
-                erro.style.display = "flex";
+                erro.style.display =
+                    "flex";
             }
 
 
             /* =========================
-               COMUNICAÇÃO WORDPRESS
+               COMUNICAÇÃO COM PÁGINA PAI
             ========================= */
 
             function avisarParent(action) {
 
-                if (window.parent !== window) {
+                if (
+                    window.parent !== window
+                ) {
 
                     window.parent.postMessage(
 
@@ -438,29 +475,48 @@
 
 
             /* =========================
-               FECHAR
+               FECHAR VISUALIZADOR
             ========================= */
 
             function fecharVisualizador() {
 
-                if (window.parent !== window) {
+                /*
+                 * Se estiver dentro de iframe:
+                 *
+                 * avisa a página pai.
+                 */
+
+                if (
+                    window.parent !== window
+                ) {
 
                     avisarParent("close");
 
+                    return;
                 }
 
-                else if (history.length > 1) {
 
-                    history.back();
+                /*
+                 * Se abriu diretamente no navegador
+                 * e existe página anterior:
+                 */
 
+                if (
+                    window.history.length > 1
+                ) {
+
+                    window.history.back();
+
+                    return;
                 }
 
-                else {
 
-                    window.location.href =
-                        parentOrigin;
+                /*
+                 * Último fallback.
+                 */
 
-                }
+                window.location.href =
+                    "https://pichaugaming.com.br/";
 
             }
 
@@ -499,13 +555,12 @@
                         url.protocol === "http:"
                     ) {
 
-                        logo.src = url.href;
+                        logo.src =
+                            url.href;
 
                     }
 
-                }
-
-                catch (_) {}
+                } catch (_) {}
 
             }
 
@@ -516,9 +571,11 @@
 
             if (alt) {
 
-                viewer.alt = alt;
+                viewer.alt =
+                    alt;
 
-                logo.alt = alt;
+                logo.alt =
+                    alt;
 
             }
 
@@ -528,7 +585,9 @@
             ========================= */
 
             customElements
-                .whenDefined("model-viewer")
+                .whenDefined(
+                    "model-viewer"
+                )
                 .then(() => {
 
                     const ModelViewerElement =
@@ -539,7 +598,7 @@
 
                     /*
                      * Mantém resolução máxima
-                     * durante interação.
+                     * durante a interação.
                      */
 
                     ModelViewerElement
@@ -547,11 +606,17 @@
 
 
                     /*
-                     * Agora aceita subpastas:
+                     * Monta a URL do GLB.
                      *
-                     * ./omega-s/onix.glb
-                     * ./cycles-z/moon.glb
-                     * etc.
+                     * Exemplo:
+                     *
+                     * model=
+                     * super-nova-signature/onix.glb
+                     *
+                     * vira:
+                     *
+                     * /3D-Viewer/
+                     * super-nova-signature/onix.glb
                      */
 
                     const modelUrl =
@@ -581,7 +646,7 @@
 
 
             /* =========================
-               AVISAR WORDPRESS
+               AVISAR ABERTURA
             ========================= */
 
             avisarParent("open");
@@ -592,6 +657,7 @@
             ========================= */
 
             viewer.addEventListener(
+
                 "progress",
 
                 event => {
@@ -602,10 +668,14 @@
                             99,
 
                             Math.round(
+
                                 (
                                     event.detail
                                         ?.totalProgress || 0
-                                ) * 100
+                                )
+
+                                * 100
+
                             )
 
                         );
@@ -629,6 +699,7 @@
                             : `Carregando modelo 3D... ${valor}%`;
 
                 }
+
             );
 
 
@@ -704,7 +775,8 @@
 
                 () => {
 
-                    logo.hidden = true;
+                    logo.hidden =
+                        true;
 
                 },
 
@@ -716,14 +788,21 @@
 
 
             /* =========================
-               EVENTOS
+               BOTÃO FECHAR
             ========================= */
 
             fechar.addEventListener(
+
                 "click",
+
                 fecharVisualizador
+
             );
 
+
+            /* =========================
+               ESC
+            ========================= */
 
             document.addEventListener(
 

@@ -49,11 +49,10 @@
 
     <iframe
         id="viewer3d"
-        src="https://lucasmede1ros.github.io/3d/?model=super-nova-signature/emerald.glb"
+        src="https://lucasmede1ros.github.io/3d/?model=super-nova-signature/emerald/emerald.glb"
         title="Super Nova Signature Emerald - Visualizador 3D"
         allowfullscreen>
     </iframe>
-
 
     <script>
         (() => {
@@ -67,9 +66,9 @@
             function fecharPagina() {
 
                 /*
-                 * Se a rota bonita estiver dentro
-                 * de outro iframe/modal no WordPress,
-                 * repassa o comando para ele.
+                 * Se estiver dentro da modal/iframe
+                 * do WordPress, repassa o comando
+                 * de fechamento para a página pai.
                  */
 
                 if (window.parent !== window) {
@@ -87,7 +86,8 @@
 
 
                 /*
-                 * Se abriu como página normal,
+                 * Se o visualizador foi aberto
+                 * diretamente pelo navegador,
                  * volta para a página anterior.
                  */
 
@@ -100,7 +100,8 @@
 
 
                 /*
-                 * Fallback.
+                 * Fallback caso não exista
+                 * uma página anterior.
                  */
 
                 window.location.href =
@@ -132,6 +133,11 @@
                         return;
                     }
 
+
+                    /*
+                     * Recebe o comando do
+                     * index principal.
+                     */
 
                     if (
                         event.data.action === "close"

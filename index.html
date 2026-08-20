@@ -45,6 +45,7 @@
             position: fixed;
             inset: 0;
             display: block;
+
             background: #191919;
 
             --poster-color: #191919;
@@ -52,10 +53,6 @@
 
             touch-action: none;
         }
-
-        /* =========================
-           CARREGAMENTO
-        ========================= */
 
         #carregamento,
         #erro {
@@ -81,6 +78,7 @@
         #erro {
             z-index: 20;
             display: none;
+
             color: #fff;
             text-align: center;
         }
@@ -94,17 +92,13 @@
             object-fit: contain;
         }
 
-        /* =========================
-           BARRA DE PROGRESSO
-        ========================= */
-
         #barra {
             width: min(320px, 70vw);
             height: 6px;
 
             overflow: hidden;
 
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255,255,255,.15);
 
             border-radius: 999px;
         }
@@ -117,7 +111,7 @@
 
             border-radius: inherit;
 
-            transition: width 0.12s linear;
+            transition: width .12s linear;
         }
 
         #texto {
@@ -127,10 +121,6 @@
 
             font-size: 13px;
         }
-
-        /* =========================
-           BOTÃO FECHAR
-        ========================= */
 
         #fechar {
             position: fixed;
@@ -151,12 +141,11 @@
             font: 600 14px Poppins, Arial, sans-serif;
 
             cursor: pointer;
-
             touch-action: manipulation;
 
             transition:
-                background 0.2s ease,
-                transform 0.1s ease;
+                background .2s ease,
+                transform .1s ease;
         }
 
         #fechar:hover {
@@ -164,7 +153,7 @@
         }
 
         #fechar:active {
-            transform: scale(0.97);
+            transform: scale(.97);
         }
 
         [hidden] {
@@ -175,13 +164,10 @@
 
 <body>
 
-    <!-- BOTÃO FECHAR -->
     <button id="fechar" type="button">
         Fechar
     </button>
 
-
-    <!-- TELA DE CARREGAMENTO -->
     <div id="carregamento">
 
         <img
@@ -208,64 +194,35 @@
 
     </div>
 
-
-    <!-- ERRO -->
     <div id="erro" role="alert">
         Não foi possível carregar o modelo 3D.
     </div>
 
-
-    <!-- VISUALIZADOR -->
     <model-viewer
         id="viewer"
-
         camera-controls
-
         disable-pan
-
         interaction-prompt="none"
-
         loading="eager"
-
         reveal="auto"
-
         environment-image="neutral"
-
         tone-mapping="commerce"
-
         exposure="1"
-
         shadow-intensity="1"
-
         shadow-softness="0.85"
-
         camera-orbit="0deg 75deg 105%"
-
         field-of-view="30deg"
-
         min-field-of-view="22deg"
-
         max-field-of-view="45deg"
-
         min-camera-orbit="auto auto 65%"
-
         max-camera-orbit="auto auto 180%"
-
         interpolation-decay="100"
-
         alt="Visualização 3D do produto">
     </model-viewer>
 
-
     <script>
         (() => {
-
             "use strict";
-
-
-            /* =========================
-               PARÂMETROS
-            ========================= */
 
             const params = new URLSearchParams(
                 window.location.search
@@ -280,11 +237,6 @@
             const alt = params
                 .get("alt")
                 ?.trim();
-
-
-            /* =========================
-               ELEMENTOS
-            ========================= */
 
             const viewer =
                 document.getElementById("viewer");
@@ -310,87 +262,35 @@
             const fechar =
                 document.getElementById("fechar");
 
-
-            /* =========================
-               ORIGEM DA PÁGINA PAI
-            ========================= */
-
-            /*
-             * Quando o viewer principal estiver dentro
-             * de uma rota bonita, por exemplo:
-             *
-             * /super-nova-signature/onix/
-             *
-             * document.referrer será o endereço da
-             * página que contém este viewer.
-             */
-
             let parentOrigin = "*";
 
             try {
-
                 if (document.referrer) {
-
                     parentOrigin =
                         new URL(
                             document.referrer
                         ).origin;
-
                 }
-
             } catch (_) {
-
                 parentOrigin = "*";
-
             }
 
-
-            /* =========================
-               TIMEOUT
-            ========================= */
-
             const timeout = window.setTimeout(
-
                 () => {
-
                     mostrarErro(
                         "O modelo 3D demorou muito para carregar."
                     );
-
                 },
-
                 180000
-
             );
 
-
-            /* =========================
-               VALIDAR MODELO
-            ========================= */
-
             function modeloValido() {
-
                 if (!nome) {
                     return false;
                 }
 
-                /*
-                 * Permitido:
-                 *
-                 * omega-s/onix.glb
-                 * cycles-z/moon.glb
-                 * super-nova-signature/onix.glb
-                 *
-                 * Bloqueado:
-                 *
-                 * ../arquivo.glb
-                 * /arquivo.glb
-                 * \arquivo.glb
-                 */
-
                 const normalizado =
                     nome.replace(/\\/g, "/");
-
 
                 if (
                     !normalizado
@@ -400,13 +300,11 @@
                     return false;
                 }
 
-
                 if (
                     normalizado.includes("..")
                 ) {
                     return false;
                 }
-
 
                 if (
                     normalizado.startsWith("/")
@@ -414,119 +312,59 @@
                     return false;
                 }
 
-
                 if (
                     normalizado.includes("\0")
                 ) {
                     return false;
                 }
 
-
                 return true;
             }
 
-
-            /* =========================
-               MOSTRAR ERRO
-            ========================= */
-
             function mostrarErro(mensagem) {
-
-                window.clearTimeout(
-                    timeout
-                );
+                window.clearTimeout(timeout);
 
                 carregamento.hidden = true;
-
                 viewer.hidden = true;
 
-                erro.textContent =
-                    mensagem;
-
-                erro.style.display =
-                    "flex";
+                erro.textContent = mensagem;
+                erro.style.display = "flex";
             }
 
-
-            /* =========================
-               COMUNICAÇÃO COM PÁGINA PAI
-            ========================= */
-
             function avisarParent(action) {
-
                 if (
                     window.parent !== window
                 ) {
-
                     window.parent.postMessage(
-
                         {
                             type: "viewer3d",
                             action: action
                         },
-
                         parentOrigin
-
                     );
-
                 }
-
             }
 
-
-            /* =========================
-               FECHAR VISUALIZADOR
-            ========================= */
-
             function fecharVisualizador() {
-
-                /*
-                 * Se estiver dentro de iframe:
-                 *
-                 * avisa a página pai.
-                 */
-
                 if (
                     window.parent !== window
                 ) {
-
                     avisarParent("close");
-
                     return;
                 }
-
-
-                /*
-                 * Se abriu diretamente no navegador
-                 * e existe página anterior:
-                 */
 
                 if (
                     window.history.length > 1
                 ) {
-
                     window.history.back();
-
                     return;
                 }
 
-
-                /*
-                 * Último fallback.
-                 */
-
                 window.location.href =
                     "https://pichaugaming.com.br/";
-
             }
 
-
-            /* =========================
-               VERIFICAR MODELO
-            ========================= */
-
             if (!modeloValido()) {
-
                 mostrarErro(
                     "Modelo 3D não encontrado."
                 );
@@ -534,55 +372,31 @@
                 return;
             }
 
-
-            /* =========================
-               POSTER PERSONALIZADO
-            ========================= */
-
             if (poster) {
-
                 try {
-
                     const url =
                         new URL(
                             poster,
                             window.location.href
                         );
 
-
                     if (
                         url.protocol === "https:" ||
                         url.protocol === "http:"
                     ) {
-
                         logo.src =
                             url.href;
-
                     }
-
                 } catch (_) {}
-
             }
 
-
-            /* =========================
-               ALT PERSONALIZADO
-            ========================= */
-
             if (alt) {
-
                 viewer.alt =
                     alt;
 
                 logo.alt =
                     alt;
-
             }
-
-
-            /* =========================
-               CARREGAR MODEL-VIEWER
-            ========================= */
 
             customElements
                 .whenDefined(
@@ -595,28 +409,22 @@
                             "model-viewer"
                         );
 
-
-                    /*
-                     * Mantém resolução máxima
-                     * durante a interação.
-                     */
-
                     ModelViewerElement
                         .minimumRenderScale = 1;
 
-
                     /*
-                     * Monta a URL do GLB.
-                     *
                      * Exemplo:
                      *
-                     * model=
-                     * super-nova-signature/onix.glb
+                     * ?model=
+                     * super-nova-signature/onix/onix.glb
                      *
                      * vira:
                      *
-                     * /3D-Viewer/
-                     * super-nova-signature/onix.glb
+                     * https://lucasmede1ros.github.io/
+                     * 3d/
+                     * super-nova-signature/
+                     * onix/
+                     * onix.glb
                      */
 
                     const modelUrl =
@@ -625,10 +433,8 @@
                             window.location.href
                         );
 
-
                     viewer.src =
                         modelUrl.href;
-
                 })
 
                 .catch(error => {
@@ -641,113 +447,66 @@
                     mostrarErro(
                         "Não foi possível iniciar o visualizador 3D."
                     );
-
                 });
-
-
-            /* =========================
-               AVISAR ABERTURA
-            ========================= */
 
             avisarParent("open");
 
-
-            /* =========================
-               PROGRESSO
-            ========================= */
-
             viewer.addEventListener(
-
                 "progress",
-
                 event => {
 
                     const valor =
                         Math.min(
-
                             99,
-
                             Math.round(
-
                                 (
                                     event.detail
                                         ?.totalProgress || 0
-                                )
-
-                                * 100
-
+                                ) * 100
                             )
-
                         );
-
 
                     progresso.style.width =
                         valor + "%";
-
 
                     barra.setAttribute(
                         "aria-valuenow",
                         String(valor)
                     );
 
-
                     texto.textContent =
                         valor >= 98
-
                             ? "Preparando visualização 3D..."
-
                             : `Carregando modelo 3D... ${valor}%`;
-
                 }
-
             );
 
-
-            /* =========================
-               MODELO CARREGADO
-            ========================= */
-
             viewer.addEventListener(
-
                 "load",
-
                 () => {
 
                     window.clearTimeout(
                         timeout
                     );
 
-
                     progresso.style.width =
                         "100%";
-
 
                     barra.setAttribute(
                         "aria-valuenow",
                         "100"
                     );
 
-
                     carregamento.hidden =
                         true;
-
                 },
-
                 {
                     once: true
                 }
-
             );
 
-
-            /* =========================
-               ERRO DO GLB
-            ========================= */
-
             viewer.addEventListener(
-
                 "error",
-
                 event => {
 
                     console.error(
@@ -755,73 +514,38 @@
                         event
                     );
 
-
                     mostrarErro(
                         "Não foi possível carregar o modelo 3D."
                     );
-
                 }
-
             );
 
-
-            /* =========================
-               ERRO DO LOGO
-            ========================= */
-
             logo.addEventListener(
-
                 "error",
-
                 () => {
-
-                    logo.hidden =
-                        true;
-
+                    logo.hidden = true;
                 },
-
                 {
                     once: true
                 }
-
             );
-
-
-            /* =========================
-               BOTÃO FECHAR
-            ========================= */
 
             fechar.addEventListener(
-
                 "click",
-
                 fecharVisualizador
-
             );
 
-
-            /* =========================
-               ESC
-            ========================= */
-
             document.addEventListener(
-
                 "keydown",
-
                 event => {
 
                     if (
                         event.key === "Escape"
                     ) {
-
                         fecharVisualizador();
-
                     }
-
                 }
-
             );
-
         })();
     </script>
 

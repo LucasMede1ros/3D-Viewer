@@ -8,7 +8,7 @@
 
     <meta name="robots" content="noindex, nofollow">
 
-    <title>Omega S Assassin's Creed Legacy | Visualizador 3D</title>
+    <title>Omega S Assassin's Creed | Visualizador 3D</title>
 
     <style>
         * {
@@ -28,16 +28,12 @@
         #viewer3d {
             position: fixed;
             inset: 0;
-
             width: 100%;
             height: 100%;
-
             margin: 0;
             padding: 0;
-
             border: 0;
             display: block;
-
             background: #191919;
         }
     </style>
@@ -47,14 +43,13 @@
 
     <iframe
         id="viewer3d"
-        src="https://lucasmede1ros.github.io/3d/?model=omega-s/assassins-creed-legacy/assassins-creed-legacy.glb"
-        title="Omega S Assassin's Creed Legacy - Visualizador 3D"
+        src="https://lucasmede1ros.github.io/3d/?model=omega-s/assassins-creed/assassins-creed.glb"
+        title="Omega S Assassin's Creed - Visualizador 3D"
         allowfullscreen>
     </iframe>
 
     <script>
         (() => {
-
             "use strict";
 
             const githubOrigin =
@@ -76,9 +71,7 @@
                 }
 
                 if (window.history.length > 1) {
-
                     window.history.back();
-
                     return;
                 }
 
@@ -90,9 +83,7 @@
                 "message",
                 event => {
 
-                    if (
-                        event.origin !== githubOrigin
-                    ) {
+                    if (event.origin !== githubOrigin) {
                         return;
                     }
 
@@ -103,12 +94,8 @@
                         return;
                     }
 
-                    if (
-                        event.data.action === "close"
-                    ) {
-
+                    if (event.data.action === "close") {
                         fecharPagina();
-
                     }
                 }
             );
